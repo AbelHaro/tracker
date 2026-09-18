@@ -8,7 +8,7 @@ int main()
     const std::vector<std::vector<Detection>> frames = {
         {{0, 0, 20, 20, 0.9}},
         {{2, 0, 20, 20, 0.3}}, // Low confidence keeps the existing track.
-        {},                     // Temporarily lost.
+        {},                    // Temporarily lost.
         {{6, 0, 20, 20, 0.9}}  // Recovered with the same ID.
     };
     for (std::size_t frame = 0; frame < frames.size(); ++frame)

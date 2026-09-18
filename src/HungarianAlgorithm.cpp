@@ -1,25 +1,22 @@
 #include "HungarianAlgorithm.hpp"
+#include <algorithm>
 #include <cmath>
 #include <limits>
 #include <stdexcept>
 
 std::vector<int> HungarianAlgorithm::solve(
-    const std::vector<std::vector<double>> &costs, double maxCost) const
+    const Eigen::Ref<const CostMatrix> &costs, double maxCost) const
 {
     if (!std::isfinite(maxCost) || maxCost < 0 || maxCost > 1)
         throw std::invalid_argument("maxCost must be in [0, 1]");
-    if (costs.empty())
-        return {};
-    const int n = static_cast<int>(costs.size());
-    const int columns = static_cast<int>(costs.front().size());
-    for (const auto &row : costs)
-    {
-        if (static_cast<int>(row.size()) != columns)
-            throw std::invalid_argument("Cost matrix must be rectangular");
-        for (double cost : row)
-            if (!std::isfinite(cost) || cost < 0)
-                throw std::invalid_argument("Costs must be finite and nonnegative");
-    }
+    if (!costs.allFinite() || (costs.array() < 0).any())
+        throw std::invalid_argument("Costs must be finite and nonnegative");
+    if (costs.rows() == 0) return {};
+    if (costs.rows() > std::numeric_limits<int>::max() - costs.cols() - 1)
+        throw std::invalid_argument("Cost matrix too large");
+    const int n = static_cast<int>(costs.rows());
+    const int columns = static_cast<int>(costs.cols());
+    if (columns == 0) return std::vector<int>(n, -1);
     // One dummy column per row permits unmatched tracks. The penalty makes
     // cardinality the first priority and total valid cost the second priority.
     const int m = columns + n;
@@ -27,12 +24,14 @@ std::vector<int> HungarianAlgorithm::solve(
     const double forbidden = unmatched * (n + 1.0);
     std::vector<double> u(n + 1), v(m + 1);
     std::vector<int> p(m + 1), way(m + 1);
+    std::vector<double> minv(m + 1);
+    std::vector<bool> used(m + 1);
     for (int i = 1; i <= n; ++i)
     {
         p[0] = i;
         int j0 = 0;
-        std::vector<double> minv(m + 1, std::numeric_limits<double>::infinity());
-        std::vector<bool> used(m + 1, false);
+        std::fill(minv.begin(), minv.end(), std::numeric_limits<double>::infinity());
+        std::fill(used.begin(), used.end(), false);
         do
         {
             used[j0] = true;
@@ -45,7 +44,7 @@ std::vector<int> HungarianAlgorithm::solve(
                     continue;
                 double cost = unmatched;
                 if (j <= columns)
-                    cost = costs[i0 - 1][j - 1] <= maxCost ? costs[i0 - 1][j - 1] : forbidden;
+                    cost = costs(i0 - 1, j - 1) <= maxCost ? costs(i0 - 1, j - 1) : forbidden;
                 const double cur = cost - u[i0] - v[j];
                 if (cur < minv[j])
                 {
@@ -77,7 +76,7 @@ std::vector<int> HungarianAlgorithm::solve(
     }
     std::vector<int> result(n, -1);
     for (int j = 1; j <= columns; ++j)
-        if (p[j] && costs[p[j] - 1][j - 1] <= maxCost)
+        if (p[j] && costs(p[j] - 1, j - 1) <= maxCost)
             result[p[j] - 1] = j - 1;
     return result;
 }

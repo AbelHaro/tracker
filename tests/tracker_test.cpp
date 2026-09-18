@@ -14,9 +14,9 @@ void require(bool condition, const char *message)
 void testAssignment()
 {
     HungarianAlgorithm solver;
-    require(solver.solve({}, 0.5).empty(), "Empty assignment");
-    require(solver.solve({{}, {}}, 0.5) == std::vector<int>({-1, -1}), "No columns");
-    require(solver.solve({{0.1, 0.2}, {0.2, 0.9}}, 0.5) == std::vector<int>({1, 0}),
+    require(solver.solve(CostMatrix(0, 0), 0.5).empty(), "Empty assignment");
+    require(solver.solve(CostMatrix(2, 0), 0.5) == std::vector<int>({-1, -1}), "No columns");
+    require(solver.solve((CostMatrix(2, 2) << 0.1, 0.2, 0.2, 0.9).finished(), 0.5) == std::vector<int>({1, 0}),
             "Assignment must be global and enforce the gate during optimization");
     // Compare small rectangular problems against exhaustive enumeration.
     std::mt19937 random(42);
@@ -24,10 +24,10 @@ void testAssignment()
         for (int m = 1; m <= 4; ++m)
             for (int trial = 0; trial < 30; ++trial)
             {
-                std::vector<std::vector<double>> costs(n, std::vector<double>(m));
-                for (auto &row : costs)
-                    for (auto &cost : row)
-                        cost = (random() % 11) / 10.0;
+                CostMatrix costs(n, m);
+                for (int row = 0; row < n; ++row)
+                    for (int col = 0; col < m; ++col)
+                        costs(row, col) = (random() % 11) / 10.0;
                 int bestCount = -1;
                 double bestCost = 0;
                 std::function<void(int, unsigned, int, double)> search =
@@ -44,8 +44,8 @@ void testAssignment()
                     }
                     search(row + 1, used, count, total);
                     for (int col = 0; col < m; ++col)
-                        if (!(used & (1u << col)) && costs[row][col] <= 0.5)
-                            search(row + 1, used | (1u << col), count + 1, total + costs[row][col]);
+                        if (!(used & (1u << col)) && costs(row, col) <= 0.5)
+                            search(row + 1, used | (1u << col), count + 1, total + costs(row, col));
                 };
                 search(0, 0, 0, 0);
                 auto assignment = solver.solve(costs, 0.5);
@@ -57,14 +57,49 @@ void testAssignment()
                     {
                         const int col = assignment[row];
                         require(!(used & (1u << col)), "Duplicate assigned column");
-                        require(costs[row][col] <= 0.5, "Forbidden assignment");
+                        require(costs(row, col) <= 0.5, "Forbidden assignment");
                         used |= 1u << col;
                         ++count;
-                        total += costs[row][col];
+                        total += costs(row, col);
                     }
                 require(count == bestCount && std::abs(total - bestCost) < 1e-9,
                         "Assignment differs from exhaustive optimum");
             }
+}
+
+void testCosts()
+{
+    std::mt19937 random(17);
+    std::vector<Detection> tracks, detections;
+    for (int i = 0; i < 37; ++i)
+    {
+        auto makeBox = [&]() {
+            const double x = static_cast<int>(random() % 100) - 50;
+            const double y = static_cast<int>(random() % 100) - 50;
+            const double w = 1 + random() % 60;
+            const double h = 1 + random() % 60;
+            return Detection(x, y, w, h, (random() % 101) / 100.0);
+        };
+        tracks.push_back(makeBox());
+        detections.push_back(makeBox());
+    }
+    detections.push_back(tracks.front());
+    for (bool fuse : {false, true})
+    {
+        const auto costs = buildIoUCostMatrix(tracks, detections, fuse);
+        for (std::size_t i = 0; i < tracks.size(); ++i)
+            for (std::size_t j = 0; j < detections.size(); ++j)
+            {
+                const double expected = 1 - tracks[i].iou(detections[j]) *
+                    (fuse ? detections[j].confidence() : 1.0);
+                require(std::abs(costs(i, j) - expected) < 1e-12,
+                        "Eigen costs differ from scalar IoU reference");
+            }
+    }
+    const auto emptyRows = buildIoUCostMatrix({}, detections, false);
+    const auto emptyCols = buildIoUCostMatrix(tracks, {}, true);
+    require(emptyRows.rows() == 0 && emptyRows.cols() == 38, "Empty row shape");
+    require(emptyCols.rows() == 37 && emptyCols.cols() == 0, "Empty column shape");
 }
 
 Detection detection(double x, double confidence = 0.9)
@@ -132,6 +167,7 @@ int main()
 {
     try
     {
+        testCosts();
         testAssignment();
         testTracking();
         std::cout << "All tracker and Hungarian tests passed\n";

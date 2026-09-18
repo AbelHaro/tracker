@@ -71,3 +71,30 @@ existente y mantiene el último ancho y alto observado, en lugar de filtrar tamb
 la relación de aspecto y la altura. No incluye la supresión de duplicados entre
 tracks activos y perdidos. Las detecciones deben llegar ya depuradas (por ejemplo,
 con NMS); esta versión no distingue clases de objetos.
+
+## Optimización con Eigen
+
+`AssociationCost.hpp` y `src/AssociationCost.cpp` construyen los costes IoU con
+operaciones por coeficiente sobre arrays Eigen. Las coordenadas y áreas de las
+detecciones se preparan una vez por asociación; cada caja de track se obtiene una
+vez. `CostMatrix` usa almacenamiento contiguo por filas, acorde al recorrido del
+algoritmo húngaro. `HungarianAlgorithm::solve()` recibe
+`Eigen::Ref<const CostMatrix>` para evitar copiar esa matriz. Los vectores de
+índices y el control de estados siguen usando contenedores estándar.
+
+Kalman usa bloques de tamaño fijo para la observación `H = [I2, 0]`, conserva la
+resolución LDLT y la actualización de covarianza de Joseph. Los productos que
+escriben sobre la covarianza utilizan intermedios independientes antes de aplicar
+`noalias()`, siguiendo las [reglas de aliasing de Eigen](https://libeigen.gitlab.io/eigen/docs-nightly/group__TopicAliasing.html).
+
+El Makefile activa `-O2` por defecto. Se puede sobrescribir `CXXFLAGS` para depurar.
+Para comparar la construcción escalar de costes con la versión Eigen:
+
+```sh
+make benchmark
+```
+
+El benchmark incluye la preparación y reserva de las matrices, con 1.000
+repeticiones para tamaños 16, 64 y 256. No mide el tracker completo ni garantiza
+una mejora concreta en otro hardware. Las pruebas contrastan los costes Eigen
+con IoU escalar y la asignación húngara con un óptimo calculado exhaustivamente.

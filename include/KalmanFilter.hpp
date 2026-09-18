@@ -19,14 +19,8 @@ private:
     // Process noise covariance matrix
     Eigen::Matrix4d _Q;
 
-    // Measurement matrix
-    Eigen::Matrix<double, 2, 4> _H;
-
     // Measurement noise matrix
     Eigen::Matrix2d _R;
-
-    // Identity matrix
-    Eigen::Matrix4d _I;
 
 public:
     KalmanFilter2D() : KalmanFilter2D(1.0, 2.0, 2.0) {} // Default constructor
@@ -40,10 +34,6 @@ public:
             0.0, 1.0, 0.0, dt,
             0.0, 0.0, 1.0, 0.0,
             0.0, 0.0, 0.0, 1.0;
-
-        // Measurement matrix
-        _H << 1.0, 0.0, 0.0, 0.0,
-            0.0, 1.0, 0.0, 0.0;
 
         _P << 10.0, 0.0, 0.0, 0.0,
             0.0, 10.0, 0.0, 0.0,
@@ -67,7 +57,6 @@ public:
         _R << sigmaM2, 0.0,
             0.0, sigmaM2;
 
-        _I.setIdentity();
     }
 
     void initialize(double posX, double posY)
@@ -85,10 +74,12 @@ public:
             return;
 
         // x^ = F * x
-        _x = _F * _x;
+        _x.head<2>() += _dt * _x.tail<2>();
 
         // P^ = F * P * F^T + Q
-        _P = _F * _P * _F.transpose() + _Q;
+        const Eigen::Matrix4d FP = _F * _P;
+        _P.noalias() = FP * _F.transpose();
+        _P += _Q;
     }
 
     void update(double measX, double measY)
@@ -104,21 +95,25 @@ public:
 
         // Innovation
         // y = z - H * x
-        Eigen::Vector2d innovation = z - _H * _x;
+        const Eigen::Vector2d innovation = z - _x.head<2>();
 
         // Innovation covariance
         // S = H * P * H^T + R
-        Eigen::Matrix2d S = _H * _P * _H.transpose() + _R;
+        const Eigen::Matrix2d S = _P.topLeftCorner<2, 2>() + _R;
 
         // Kalman gain
-        Eigen::Matrix<double, 4, 2> PHt = _P * _H.transpose();
+        const Eigen::Matrix<double, 4, 2> PHt = _P.leftCols<2>();
         Eigen::Matrix<double, 4, 2> K = S.ldlt().solve(PHt.transpose()).transpose();
 
-        _x = _x + K * innovation;
+        _x.noalias() += K * innovation;
 
         // Joseph form update for covariance
-        Eigen::Matrix4d IKH = _I - K * _H;
-        _P = IKH * _P * IKH.transpose() + K * _R * K.transpose();
+        Eigen::Matrix4d IKH = Eigen::Matrix4d::Identity();
+        IKH.leftCols<2>() -= K; // H = [I2, 0].
+        const Eigen::Matrix4d corrected = IKH * _P;
+        const Eigen::Matrix<double, 4, 2> KR = K * _R;
+        _P.noalias() = corrected * IKH.transpose();
+        _P.noalias() += KR * K.transpose();
     }
 
     double x() const { return _x(0); }

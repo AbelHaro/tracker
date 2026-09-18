@@ -4,7 +4,13 @@
 #include "Prediction.hpp"
 
 // Internal trajectory state, independent of the association policy.
-enum class TrackState { Tentative, Tracked, Lost, Removed };
+enum class TrackState
+{
+    Tentative,
+    Tracked,
+    Lost,
+    Removed
+};
 
 class Track
 {
@@ -19,6 +25,7 @@ public:
     int age() const { return _age; }
     Detection box() const;
     Prediction prediction() const { return Prediction(_id, box()); }
+    ~Track() = default;
 
 private:
     std::uint64_t _id;

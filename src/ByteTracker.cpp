@@ -25,16 +25,16 @@ std::vector<std::size_t> ByteTracker::associate(const std::vector<std::size_t> &
                                                 const std::vector<std::size_t> &indices, const std::vector<Detection> &detections,
                                                 double maxCost, bool fuseConfidence)
 {
-    std::vector<std::vector<double>> costs(tracks.size(), std::vector<double>(indices.size()));
-    for (std::size_t i = 0; i < tracks.size(); ++i)
-        for (std::size_t j = 0; j < indices.size(); ++j)
-        {
-            const auto &detection = detections[indices[j]];
-            double similarity = _tracks[tracks[i]].box().iou(detection);
-            if (fuseConfidence)
-                similarity *= detection.confidence();
-            costs[i][j] = 1.0 - similarity;
-        }
+    if (tracks.empty() || indices.empty())
+        return indices;
+    std::vector<Detection> trackBoxes, detectionBoxes;
+    trackBoxes.reserve(tracks.size());
+    detectionBoxes.reserve(indices.size());
+    for (auto i : tracks)
+        trackBoxes.push_back(_tracks[i].box());
+    for (auto i : indices)
+        detectionBoxes.push_back(detections[i]);
+    const CostMatrix costs = buildIoUCostMatrix(trackBoxes, detectionBoxes, fuseConfidence);
     const auto matches = _association.solve(costs, maxCost);
     std::vector<bool> used(indices.size(), false);
     for (std::size_t i = 0; i < matches.size(); ++i)
