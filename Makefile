@@ -2,20 +2,33 @@ CXX = g++
 CPPFLAGS += -Iinclude -I/usr/include/eigen3
 CXXFLAGS = -std=c++23 -Wall -Wextra
 
-SRCS = $(wildcard src/*.cpp)
+LIB_SRCS = $(filter-out src/main.cpp,$(wildcard src/*.cpp))
 HEADERS = $(wildcard include/*.h include/*.hpp)
 TARGET = build/bin/tracker
+TEST_TARGETS = build/bin/kalman_filter_test build/bin/tracker_test
+PYTHON ?= python3
 
-.PHONY: all run clean
+.PHONY: all run test plot clean
 
 all: $(TARGET)
 
-$(TARGET): $(SRCS) $(HEADERS) Makefile
+$(TARGET): src/main.cpp $(LIB_SRCS) $(HEADERS) Makefile
 	mkdir -p $(dir $@)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(SRCS) $(LDFLAGS) $(LDLIBS) -o $@
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) src/main.cpp $(LIB_SRCS) $(LDFLAGS) $(LDLIBS) -o $@
 
 run: $(TARGET)
 	./$(TARGET)
 
+build/bin/%_test: tests/%_test.cpp $(LIB_SRCS) $(HEADERS) Makefile
+	mkdir -p $(dir $@)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $< $(LIB_SRCS) $(LDFLAGS) $(LDLIBS) -o $@
+
+test: $(TEST_TARGETS)
+	./build/bin/kalman_filter_test
+	./build/bin/tracker_test
+
+plot:
+	$(PYTHON) tests/plot_trajectory.py
+
 clean:
-	$(RM) $(TARGET)
+	$(RM) $(TARGET) $(TEST_TARGETS)

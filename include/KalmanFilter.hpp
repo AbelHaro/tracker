@@ -1,3 +1,5 @@
+#pragma once
+
 #include <Eigen/Dense>
 
 class KalmanFilter2D
@@ -27,6 +29,8 @@ private:
     Eigen::Matrix4d _I;
 
 public:
+    KalmanFilter2D() : KalmanFilter2D(1.0, 2.0, 2.0) {} // Default constructor
+
     KalmanFilter2D(double dt, double processNoiseStd, double measurementNoiseStd) : _dt(dt)
     {
         _x.setZero();
