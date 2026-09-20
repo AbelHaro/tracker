@@ -8,11 +8,15 @@ Requires Python 3.14 or later, a C++23 compiler, and Eigen 3. From this director
 ```sh
 uv sync
 uv run python -c "import tracker; print(tracker.add(2, 3))"
-uv run numpy-test
+uv run main
 ```
 
 uv builds and installs the binding automatically. The distribution is named
 `tracker-cpp`; the importable module is named `tracker`.
+
+The entry point is `src.main:main`, defined in `src/main.py`.
+There is no `__init__.py`; `namespace = true` enables packaging this layout.
+The command `uv run numpy-test` remains available as an alias.
 
 ## NumPy interface
 

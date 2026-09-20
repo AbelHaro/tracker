@@ -26,6 +26,11 @@ cache-keys = [
     { file = "include/**/*.h" },
 ]
 
+[tool.uv.workspace]
+members = [
+    "examples/yolo",
+]
+
 [dependency-groups]
 dev = [
     "pybind11-stubgen>=2.5.5",

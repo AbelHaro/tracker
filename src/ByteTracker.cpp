@@ -5,6 +5,15 @@
 
 ByteTracker::ByteTracker(ByteTrackerConfig config) : _config(config)
 {
+    switch (config.inputFormat)
+    {
+    case BoxFormat::TLWH:
+    case BoxFormat::CXCYWH:
+    case BoxFormat::XYXY:
+        break;
+    default:
+        throw std::invalid_argument("Invalid input box format");
+    }
     for (double value : {config.lowConfidence, config.highConfidence, config.newTrackConfidence,
                          config.firstMatchCost, config.secondMatchCost, config.tentativeMatchCost})
         if (!std::isfinite(value) || value < 0 || value > 1)

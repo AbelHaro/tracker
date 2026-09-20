@@ -1,0 +1,31 @@
+[project]
+name = "yolo"
+version = "0.1.0"
+description = "Traffic video detection with YOLO and the C++ ByteTracker"
+readme = "README.md"
+authors = [
+    { name = "AbelHaro", email = "abelh2003@gmail.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "tracker-cpp",
+    "numpy>=2.3.2",
+    "opencv-python>=4.11",
+    "ultralytics>=8.4",
+]
+
+[project.scripts]
+main = "src.main:main"
+traffic-tracker = "src.main:main"
+
+[build-system]
+requires = ["uv_build>=0.12.17,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "src"
+module-root = ""
+namespace = true
+
+[tool.uv.sources]
+tracker-cpp = { workspace = true }

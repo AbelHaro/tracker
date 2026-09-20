@@ -19,6 +19,11 @@ PYBIND11_MODULE(tracker, m)
     m.doc() = "Tracker library";
     m.def("add", &add, "A function that adds two numbers");
 
+    py::enum_<BoxFormat>(m, "BoxFormat")
+        .value("TLWH", BoxFormat::TLWH)
+        .value("CXCYWH", BoxFormat::CXCYWH)
+        .value("XYXY", BoxFormat::XYXY);
+
     py::class_<Detection>(m, "Detection")
         .def(py::init<double, double, double, double, double, int>(), py::arg("x"), py::arg("y"), py::arg("width"), py::arg("height"), py::arg("condifence"), py::arg("class_id"))
         .def_property_readonly("x", &Detection::x)
@@ -30,17 +35,28 @@ PYBIND11_MODULE(tracker, m)
 
     py::class_<Prediction>(m, "Prediction").def_property_readonly("id", &Prediction::id).def_property_readonly("box", &Prediction::box, py::return_value_policy::copy);
 
+    const ByteTrackerConfig defaultConfig{};
     py::class_<ByteTrackerConfig>(m, "ByteTrackerConfig")
-        .def(py::init<>())
+        .def(py::init<double, double, double, double, double, double, int, BoxFormat>(),
+             py::arg("lowConfidence") = defaultConfig.lowConfidence,
+             py::arg("highConfidence") = defaultConfig.highConfidence,
+             py::arg("newTrackConfidence") = defaultConfig.newTrackConfidence,
+             py::arg("firstMatchCost") = defaultConfig.firstMatchCost,
+             py::arg("secondMatchCost") = defaultConfig.secondMatchCost,
+             py::arg("tentativeMatchCost") = defaultConfig.tentativeMatchCost,
+             py::arg("maxLostFrames") = defaultConfig.maxLostFrames,
+             py::arg_v("inputFormat", defaultConfig.inputFormat, "BoxFormat.TLWH"))
         .def_readwrite("lowConfidence", &ByteTrackerConfig::lowConfidence)
         .def_readwrite("highConfidence", &ByteTrackerConfig::highConfidence)
         .def_readwrite("newTrackConfidence", &ByteTrackerConfig::newTrackConfidence)
         .def_readwrite("firstMatchCost", &ByteTrackerConfig::firstMatchCost)
         .def_readwrite("secondMatchCost", &ByteTrackerConfig::secondMatchCost)
         .def_readwrite("tentativeMatchCost", &ByteTrackerConfig::tentativeMatchCost)
-        .def_readwrite("maxLostFrames", &ByteTrackerConfig::maxLostFrames);
+        .def_readwrite("maxLostFrames", &ByteTrackerConfig::maxLostFrames)
+        .def_readwrite("inputFormat", &ByteTrackerConfig::inputFormat);
 
     py::class_<Tracker>(m, "Tracker")
+        .def_property_readonly("inputFormat", &Tracker::inputFormat)
         .def("update", [](Tracker &tracker, py::array_t<float, py::array::c_style | py::array::forcecast> input)
              {
             const auto buf = input.request();
@@ -51,6 +67,7 @@ PYBIND11_MODULE(tracker, m)
             const auto *ptr = static_cast<const float *>(buf.ptr);
             std::vector<Detection> detections;
             detections.reserve(static_cast<std::size_t>(n));
+            const auto format = tracker.inputFormat();
             for (py::ssize_t i = 0; i < n; ++i)
             {
                 const float *row = ptr + i * 6;
@@ -59,7 +76,23 @@ PYBIND11_MODULE(tracker, m)
                     classId < std::numeric_limits<int>::min() ||
                     classId > std::numeric_limits<int>::max())
                     throw py::value_error("class_id must be a finite integer in the C++ int range (-2147483648 to 2147483647)");
-                detections.emplace_back(row[0], row[1], row[2], row[3], row[4],
+                double x = row[0], y = row[1], width = row[2], height = row[3];
+                switch (format)
+                {
+                case BoxFormat::TLWH:
+                    break;
+                case BoxFormat::CXCYWH:
+                    x -= width / 2;
+                    y -= height / 2;
+                    break;
+                case BoxFormat::XYXY:
+                    width -= x;
+                    height -= y;
+                    break;
+                default:
+                    throw py::value_error("Invalid input box format");
+                }
+                detections.emplace_back(x, y, width, height, row[4],
                                         static_cast<int>(classId));
             }
 
@@ -77,12 +110,14 @@ PYBIND11_MODULE(tracker, m)
                 out(i, 5) = static_cast<float>(box.confidence());
                 out(i, 6) = static_cast<float>(box.classId());
             }
-            return output; }, py::arg("detections"), "Update one frame: (N, 6) [x, y, width, height, confidence, class_id] "
-                                         "to float32 (N, 7) [x, y, width, height, track_id, confidence, class_id], "
-                                         "where N is the number of returned tracks.")
+            return output; }, py::arg("detections"), "Update one frame: (N, 6) [a, b, c, d, confidence, class_id]. "
+                                         "Pixel box coordinates follow inputFormat: TLWH (x, y, width, height), "
+                                         "CXCYWH (center_x, center_y, width, height), or XYXY (x1, y1, x2, y2). "
+                                         "Returns float32 (M, 7) [x, y, width, height, track_id, confidence, class_id] "
+                                         "with top-left x, y (TLWH), regardless of inputFormat. Empty frames use shape (0, 6).")
         .def("reset", &Tracker::reset);
 
     py::class_<ByteTracker, Tracker>(m, "ByteTracker")
         .def(py::init<ByteTrackerConfig>(),
-             py::arg_v("config", ByteTrackerConfig{}, "ByteTrackerConfig()"));
+             py::arg_v("config", defaultConfig, "ByteTrackerConfig()"));
 }

@@ -4,29 +4,39 @@
 #include "Track.hpp"
 #include "Tracker.hpp"
 
-struct ByteTrackerConfig
+class ByteTrackerConfig
 {
-    double lowConfidence = 0.1;
-    double highConfidence = 0.6;
-    double newTrackConfidence = 0.7;
-    double firstMatchCost = 0.8;
-    double secondMatchCost = 0.5;
-    double tentativeMatchCost = 0.7;
-    int maxLostFrames = 30;
+public:
+    ByteTrackerConfig(double lowConfidence = 0.1, double highConfidence = 0.6, double newTrackConfidence = 0.7,
+                      double firstMatchCost = 0.8, double secondMatchCost = 0.5, double tentativeMatchCost = 0.7,
+                      int maxLostFrames = 30, BoxFormat inputFormat = BoxFormat::TLWH)
+        : lowConfidence(lowConfidence), highConfidence(highConfidence), newTrackConfidence(newTrackConfidence),
+          firstMatchCost(firstMatchCost), secondMatchCost(secondMatchCost), tentativeMatchCost(tentativeMatchCost),
+          maxLostFrames(maxLostFrames), inputFormat(inputFormat) {};
+
+    double lowConfidence;
+    double highConfidence;
+    double newTrackConfidence;
+    double firstMatchCost;
+    double secondMatchCost;
+    double tentativeMatchCost;
+    int maxLostFrames;
+    BoxFormat inputFormat;
 };
 
 class ByteTracker final : public Tracker
 {
 public:
     explicit ByteTracker(ByteTrackerConfig config = {});
+    BoxFormat inputFormat() const override { return _config.inputFormat; }
     std::vector<Prediction> update(const std::vector<Detection> &detections) override;
     void reset() override;
 
 private:
     // Updates matched tracks and returns remaining detection indices.
     std::vector<std::size_t> associate(const std::vector<std::size_t> &tracks,
-        const std::vector<std::size_t> &indices, const std::vector<Detection> &detections,
-        double maxCost, bool fuseConfidence);
+                                       const std::vector<std::size_t> &indices, const std::vector<Detection> &detections,
+                                       double maxCost, bool fuseConfidence);
     ByteTrackerConfig _config;
     HungarianAlgorithm _association;
     std::vector<Track> _tracks;

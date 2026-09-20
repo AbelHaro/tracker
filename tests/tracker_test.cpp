@@ -169,6 +169,34 @@ void testTracking()
     require(rejected, "Invalid config must be rejected");
 }
 
+void testInputFormat()
+{
+    for (auto format : {BoxFormat::TLWH, BoxFormat::CXCYWH, BoxFormat::XYXY})
+    {
+        ByteTrackerConfig config;
+        config.inputFormat = format;
+        std::unique_ptr<Tracker> tracker = std::make_unique<ByteTracker>(config);
+        require(tracker->inputFormat() == format, "Input format must be available through Tracker");
+        // Typed C++ detections are already canonical, regardless of the raw input format.
+        const auto result = tracker->update({Detection(10, 20, 40, 60, 0.9)});
+        require(result[0].box().x() == 10 && result[0].box().y() == 20 &&
+                result[0].box().width() == 40 && result[0].box().height() == 60,
+                "Typed Detection must not be converted again");
+    }
+    ByteTrackerConfig config;
+    config.inputFormat = static_cast<BoxFormat>(-1);
+    bool rejected = false;
+    try
+    {
+        ByteTracker invalid(config);
+    }
+    catch (const std::invalid_argument &)
+    {
+        rejected = true;
+    }
+    require(rejected, "Invalid box format must be rejected at construction");
+}
+
 int main()
 {
     try
@@ -176,6 +204,7 @@ int main()
         testCosts();
         testAssignment();
         testTracking();
+        testInputFormat();
         std::cout << "All tracker and Hungarian tests passed\n";
     }
     catch (const std::exception &error)
