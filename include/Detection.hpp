@@ -8,8 +8,8 @@
 class Detection
 {
 public:
-    Detection(double x, double y, double width, double height, double confidence)
-        : _x(x), _y(y), _width(width), _height(height), _confidence(confidence)
+    Detection(double x, double y, double width, double height, double confidence, int classId = 0)
+        : _x(x), _y(y), _width(width), _height(height), _confidence(confidence), _classId(classId)
     {
         if (!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(width) ||
             !std::isfinite(height) || !std::isfinite(confidence) ||
@@ -21,6 +21,8 @@ public:
     double y() const { return _y; }
     double width() const { return _width; }
     double height() const { return _height; }
+    int classId() const { return _classId; }
+
     double confidence() const { return _confidence; }
     double centerX() const { return _x + _width / 2; }
     double centerY() const { return _y + _height / 2; }
@@ -35,4 +37,5 @@ public:
 
 private:
     double _x, _y, _width, _height, _confidence;
+    int _classId;
 };

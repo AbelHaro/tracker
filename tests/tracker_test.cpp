@@ -109,34 +109,40 @@ Detection detection(double x, double confidence = 0.9)
 
 void testTracking()
 {
+    Track classified(1, Detection(0, 0, 20, 20, 0.9, 7), true);
+    classified.predict();
+    require(classified.box().classId() == 7, "Prediction must retain class ID");
+    classified.update(Detection(1, 0, 20, 20, 0.8, 3));
+    require(classified.box().classId() == 3, "Prediction must use latest detection class ID");
+
     ByteTrackerConfig config;
     config.maxLostFrames = 2;
     std::unique_ptr<Tracker> tracker = std::make_unique<ByteTracker>(config);
-    auto result = tracker->track({detection(0), detection(100)});
+    auto result = tracker->update({detection(0), detection(100)});
     require(result.size() == 2 && result[0].id() != result[1].id(), "Distinct track IDs");
     const auto first = result[0].id(), second = result[1].id();
-    result = tracker->track({detection(101), detection(1, 0.3)});
+    result = tracker->update({detection(101), detection(1, 0.3)});
     require(result.size() == 2 && result[0].id() == first && result[1].id() == second,
             "Reordering and low confidence must preserve IDs");
-    require(tracker->track({}).empty(), "Lost tracks must not be emitted");
-    result = tracker->track({detection(3), detection(103)});
+    require(tracker->update({}).empty(), "Lost tracks must not be emitted");
+    result = tracker->update({detection(3), detection(103)});
     require(result.size() == 2 && result[0].id() == first && result[1].id() == second,
             "High confidence must recover lost tracks");
-    tracker->track({});
-    require(tracker->track({detection(4, 0.3)}).empty(), "Low confidence cannot revive lost track");
-    tracker->track({});
-    require(tracker->track({detection(4)}).empty(), "Later births require confirmation");
-    result = tracker->track({detection(4)});
+    tracker->update({});
+    require(tracker->update({detection(4, 0.3)}).empty(), "Low confidence cannot revive lost track");
+    tracker->update({});
+    require(tracker->update({detection(4)}).empty(), "Later births require confirmation");
+    result = tracker->update({detection(4)});
     require(result.size() == 1 && result[0].id() != first, "Expired ID must not return");
     tracker->reset();
-    require(tracker->track({detection(0, 0.3)}).empty(), "Low confidence cannot create tracks");
-    require(tracker->track({detection(0)}).empty(), "New track is tentative");
-    tracker->track({});
-    require(tracker->track({detection(0)}).empty(), "Unconfirmed track must be removed on a miss");
-    result = tracker->track({detection(0)});
+    require(tracker->update({detection(0, 0.3)}).empty(), "Low confidence cannot create tracks");
+    require(tracker->update({detection(0)}).empty(), "New track is tentative");
+    tracker->update({});
+    require(tracker->update({detection(0)}).empty(), "Unconfirmed track must be removed on a miss");
+    result = tracker->update({detection(0)});
     require(result.size() == 1, "Repeated high confidence confirms new track");
     tracker->reset();
-    result = tracker->track({detection(0)});
+    result = tracker->update({detection(0)});
     require(result.size() == 1 && result[0].id() == 1, "Reset starts a new ID sequence");
     require(detection(0).iou(detection(0)) == 1 && detection(0).iou(detection(100)) == 0,
             "Wrong IoU");

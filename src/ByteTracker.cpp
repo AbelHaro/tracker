@@ -51,7 +51,7 @@ std::vector<std::size_t> ByteTracker::associate(const std::vector<std::size_t> &
     return remaining;
 }
 
-std::vector<Prediction> ByteTracker::track(const std::vector<Detection> &detections)
+std::vector<Prediction> ByteTracker::update(const std::vector<Detection> &detections)
 {
     ++_frame;
     std::vector<std::size_t> high, low, pool, tentative;

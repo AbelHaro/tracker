@@ -1,7 +1,7 @@
 # Tracker C++
 
-Seguimiento de objetos a partir de detecciones por frame. Requiere un compilador
-C++23, Make y Eigen 3 (por defecto en `/usr/include/eigen3`).
+Object tracking from per-frame detections. Requires a C++23 compiler, Make,
+and Eigen 3 (located at `/usr/include/eigen3` by default).
 
 ```sh
 make
@@ -9,92 +9,146 @@ make run
 make test
 ```
 
-## Estructura
+## Python package with uv
 
-- `include/Tracker.hpp`: interfaz abstracta con `track()` y `reset()`, con destructor virtual.
-- `include/ByteTracker.hpp`, `src/ByteTracker.cpp`: configuración y asociación en dos etapas.
-- `include/Detection.hpp`: caja `(x, y, width, height)` en píxeles, confianza `[0, 1]` e IoU.
-- `include/Prediction.hpp`: resultado por valor, con ID estable y caja estimada.
-- `include/Track.hpp`, `src/Track.cpp`: trayectoria, Kalman y estados `Tentative`, `Tracked`, `Lost`, `Removed`.
-- `include/KalmanFilter.hpp`: filtro existente de velocidad constante `[cx, cy, vx, vy]`.
-- `include/HungarianAlgorithm.hpp`, `src/HungarianAlgorithm.cpp`: asignación global rectangular con umbral y filas sin pareja.
-- `src/main.cpp`: ejemplo de uso a través de la interfaz.
-- `tests/`: pruebas del filtro, asignación y ciclo de vida de tracks.
+The `tracker-cpp` package uses CMake and scikit-build-core to build the Python
+extension, imported as `tracker`. It requires Python 3.14 or later, a C++23
+compiler, and Eigen 3 headers (`libeigen3-dev` on Debian/Ubuntu). uv installs
+the Python build dependencies; the backend obtains CMake and Ninja if needed.
 
-## Uso y extensión
+Build a source distribution and wheel from the repository root:
+
+```sh
+uv build
+```
+
+Build artifacts are written to `dist/`. The backend compiles the C++ sources,
+so running `make bindings` first is unnecessary. The wheel targets the platform
+and Python version used to build it.
+
+The [uv example](examples/numpy-test/README.md) declares the root package as a
+local dependency:
+
+```sh
+cd examples/numpy-test
+uv sync
+uv run numpy-test
+```
+
+After changing C++ code, run `uv sync` again from the example directory.
+The cache keys include sources and headers so uv rebuilds when they change.
+No `PYTHONPATH` configuration is required.
+
+The `src/`, `include/`, `bindings/`, and `tests/` directories remain at the
+repository root. The Makefile builds the C++ executable and tests.
+
+## Generate Python type stubs
+
+After changing binding signatures or docstrings, run from the repository root:
+
+```sh
+make stubs
+```
+
+This builds and installs the current extension in the uv development environment
+and generates `bindings/tracker.pyi` with `pybind11-stubgen`. The generator is a
+development dependency; it is not needed at runtime. Keep the generated file in
+version control and regenerate it instead of editing it manually. CMake installs
+it alongside the extension in the wheel.
+
+Run `uv sync` from `examples/numpy-test` afterward to install the updated stub
+for IntelliSense. See the [example documentation](examples/numpy-test/README.md#types-and-intellisense)
+for editor setup.
+
+## Project structure
+
+- `include/Tracker.hpp`: abstract interface with `update()`, `reset()`, and a virtual destructor.
+- `include/ByteTracker.hpp`, `src/ByteTracker.cpp`: configuration and two-stage association.
+- `include/Detection.hpp`: bounding box `(x, y, width, height)` in pixels, confidence in `[0, 1]`, class ID, and IoU.
+- `include/Prediction.hpp`: output snapshot with a stable ID and estimated box.
+- `include/Track.hpp`, `src/Track.cpp`: trajectory, Kalman filter, and `Tentative`, `Tracked`, `Lost`, and `Removed` states.
+- `include/KalmanFilter.hpp`: constant-velocity filter with state `[cx, cy, vx, vy]`.
+- `include/HungarianAlgorithm.hpp`, `src/HungarianAlgorithm.cpp`: global rectangular assignment with a cost threshold and unmatched rows.
+- `bindings/tracker.cpp`: Python bindings and NumPy input/output conversion.
+- `bindings/tracker.pyi`: generated Python type declarations for editors and type checkers.
+- `src/main.cpp`: example using the abstract interface.
+- `tests/`: filter, assignment, track lifecycle, and Python binding tests.
+
+## Usage and extension
 
 ```cpp
 #include "ByteTracker.hpp"
 #include <memory>
 
 std::unique_ptr<Tracker> tracker = std::make_unique<ByteTracker>();
-auto predictions = tracker->track({Detection(10, 20, 40, 60, 0.9)});
+auto predictions = tracker->update({Detection(10, 20, 40, 60, 0.9)});
 for (const auto &prediction : predictions) {
     auto id = prediction.id();
     const auto &box = prediction.box();
-    // Consumir id y box.
+    // Use id and box.
 }
 ```
 
-Para añadir otro tracker, heredar de `Tracker` e implementar `track()` y `reset()`.
-La interfaz pública no depende de Kalman ni del algoritmo húngaro; cada
-implementación puede elegir su modelo de movimiento y asociación.
-`Track` y `HungarianAlgorithm` son componentes separados que se pueden reutilizar.
+To add another tracker, inherit from `Tracker` and implement `update()` and
+`reset()`. The public interface does not depend on Kalman filtering or the
+Hungarian algorithm; each implementation can choose its own motion model and
+association strategy. `Track` and `HungarianAlgorithm` are reusable components.
 
-Llamar a `track()` una vez por frame, incluso con un vector vacío. El paso temporal
-de Kalman es un frame. El resultado contiene solo tracks confirmados observados en
-ese frame, con la caja corregida por Kalman; los perdidos se conservan internamente
-hasta `maxLostFrames` frames ausentes. Pueden recuperarse en el siguiente frame si
-no han excedido ese número de ausencias. `reset()` inicia una secuencia nueva y
-reinicia los IDs a 1. Los IDs son locales a cada instancia y secuencia.
+Call `update()` once per frame, including frames with no detections. The Kalman
+time step is one frame. Results contain only confirmed tracks observed in the
+current frame, with Kalman-corrected boxes. Lost tracks remain stored internally
+for up to `maxLostFrames` missing frames and can be recovered on the next frame
+if they have not exceeded that limit. `reset()` starts a new sequence and resets
+IDs to 1. IDs are local to each tracker instance and sequence.
 
-## ByteTrack implementado
+## ByteTrack implementation
 
-1. Predice el centro de cada track con Kalman.
-2. Asocia tracks confirmados y perdidos con detecciones de alta confianza mediante
-   coste `1 - IoU * confianza` y asignación húngara.
-3. Asocia tracks activos todavía sin pareja con detecciones de baja confianza
-   mediante coste `1 - IoU`. Las detecciones débiles no crean ni reactivan tracks.
-4. Confirma tracks tentativos con las detecciones fuertes restantes. Elimina los
-   tentativos sin pareja y crea nuevas trayectorias con `newTrackConfidence`.
-5. Conserva los tracks perdidos durante el buffer configurado y elimina los caducados.
+1. Predict each track's center with the Kalman filter.
+2. Match confirmed and lost tracks to high-confidence detections using
+   `1 - IoU * confidence` costs and Hungarian assignment.
+3. Match remaining active tracks to low-confidence detections using `1 - IoU`
+   costs. Low-confidence detections cannot create or reactivate tracks.
+4. Confirm tentative tracks with the remaining high-confidence detections.
+   Remove unmatched tentative tracks and create new tracks using `newTrackConfidence`.
+5. Retain lost tracks for the configured buffer and remove expired tracks.
 
-Los nacimientos del primer frame se confirman inmediatamente; los posteriores
-necesitan otra detección fuerte en el frame siguiente. Los umbrales de asociación
-son costes máximos: un valor menor es más estricto. La asignación maximiza primero
-el número de parejas válidas y después minimiza su coste total.
+Tracks created on the first frame are confirmed immediately; later tracks need
+another high-confidence detection on the next frame. Association thresholds are
+maximum costs, so lower values are stricter. Assignment first maximizes the
+number of valid matches, then minimizes their total cost.
 
-Esta implementación adapta la asociación en dos etapas de
+This implementation adapts the two-stage association from
 [ByteTrack](https://github.com/ifzhang/ByteTrack/blob/main/yolox/tracker/byte_tracker.py).
-No es una reproducción exacta del tracker de referencia: reutiliza el Kalman 2D
-existente y mantiene el último ancho y alto observado, en lugar de filtrar también
-la relación de aspecto y la altura. No incluye la supresión de duplicados entre
-tracks activos y perdidos. Las detecciones deben llegar ya depuradas (por ejemplo,
-con NMS); esta versión no distingue clases de objetos.
+It does not exactly reproduce the reference tracker: it reuses the existing 2D
+Kalman filter and retains the last observed width and height instead of also
+filtering aspect ratio and height. It does not suppress duplicates between
+active and lost tracks. Detections must already be filtered, for example with
+NMS. Class IDs are preserved as metadata but do not affect association.
 
-## Optimización con Eigen
+## Eigen optimization
 
-`AssociationCost.hpp` y `src/AssociationCost.cpp` construyen los costes IoU con
-operaciones por coeficiente sobre arrays Eigen. Las coordenadas y áreas de las
-detecciones se preparan una vez por asociación; cada caja de track se obtiene una
-vez. `CostMatrix` usa almacenamiento contiguo por filas, acorde al recorrido del
-algoritmo húngaro. `HungarianAlgorithm::solve()` recibe
-`Eigen::Ref<const CostMatrix>` para evitar copiar esa matriz. Los vectores de
-índices y el control de estados siguen usando contenedores estándar.
+`AssociationCost.hpp` and `src/AssociationCost.cpp` build IoU costs using
+coefficient-wise operations on Eigen arrays. Detection coordinates and areas
+are prepared once per association, and each track box is retrieved once.
+`CostMatrix` uses contiguous row-major storage to match the Hungarian solver's
+access pattern. `HungarianAlgorithm::solve()` accepts
+`Eigen::Ref<const CostMatrix>` to avoid copying the matrix. Index vectors and
+state management still use standard containers.
 
-Kalman usa bloques de tamaño fijo para la observación `H = [I2, 0]`, conserva la
-resolución LDLT y la actualización de covarianza de Joseph. Los productos que
-escriben sobre la covarianza utilizan intermedios independientes antes de aplicar
-`noalias()`, siguiendo las [reglas de aliasing de Eigen](https://libeigen.gitlab.io/eigen/docs-nightly/group__TopicAliasing.html).
+The Kalman filter uses fixed-size blocks for the observation matrix
+`H = [I2, 0]`, LDLT factorization, and the Joseph covariance update. Products
+that write to the covariance use separate intermediate values before applying
+`noalias()`, following
+[Eigen's aliasing rules](https://libeigen.gitlab.io/eigen/docs-nightly/group__TopicAliasing.html).
 
-El Makefile activa `-O2` por defecto. Se puede sobrescribir `CXXFLAGS` para depurar.
-Para comparar la construcción escalar de costes con la versión Eigen:
+The Makefile enables `-O2` by default. Override `CXXFLAGS` for debugging.
+To compare scalar cost construction with the Eigen implementation:
 
 ```sh
 make benchmark
 ```
 
-El benchmark incluye la preparación y reserva de las matrices, con 1.000
-repeticiones para tamaños 16, 64 y 256. No mide el tracker completo ni garantiza
-una mejora concreta en otro hardware. Las pruebas contrastan los costes Eigen
-con IoU escalar y la asignación húngara con un óptimo calculado exhaustivamente.
+The benchmark includes matrix preparation and allocation, with 1,000 repetitions
+for sizes 16, 64, and 256. It does not measure the complete tracker or guarantee
+a particular speedup on other hardware. Tests compare Eigen costs against
+scalar IoU and Hungarian assignment against an exhaustively computed optimum.

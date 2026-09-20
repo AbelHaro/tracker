@@ -13,7 +13,7 @@ int main()
     };
     for (std::size_t frame = 0; frame < frames.size(); ++frame)
     {
-        const auto predictions = tracker->track(frames[frame]);
+        const auto predictions = tracker->update(frames[frame]);
         std::cout << "Frame " << frame << ": " << predictions.size() << " tracks\n";
         for (const auto &prediction : predictions)
             std::cout << "  ID=" << prediction.id()

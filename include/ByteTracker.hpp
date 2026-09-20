@@ -19,7 +19,7 @@ class ByteTracker final : public Tracker
 {
 public:
     explicit ByteTracker(ByteTrackerConfig config = {});
-    std::vector<Prediction> track(const std::vector<Detection> &detections) override;
+    std::vector<Prediction> update(const std::vector<Detection> &detections) override;
     void reset() override;
 
 private:

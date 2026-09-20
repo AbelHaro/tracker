@@ -27,5 +27,5 @@ Detection Track::box() const
     return Detection(_filter.x() - _lastDetection.width() / 2,
                      _filter.y() - _lastDetection.height() / 2,
                      _lastDetection.width(), _lastDetection.height(),
-                     _lastDetection.confidence());
+                     _lastDetection.confidence(), _lastDetection.classId());
 }
