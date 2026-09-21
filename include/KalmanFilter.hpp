@@ -56,7 +56,6 @@ public:
 
         _R << sigmaM2, 0.0,
             0.0, sigmaM2;
-
     }
 
     void initialize(double posX, double posY)

@@ -1,29 +1,25 @@
 [project]
-name = "numpy-test"
+name = "tracking-demo"
 version = "0.1.0"
-description = "Add your description here"
+description = "Animated detections and tracking estimates with NumPy and Matplotlib"
 readme = "README.md"
 authors = [
     { name = "AbelHaro", email = "abelh2003@gmail.com" }
 ]
 requires-python = ">=3.14"
 dependencies = [
+    "matplotlib",
+    "PyQt6",
     "numpy>=2.5.3",
     "tracker-cpp",
 ]
 
 [project.scripts]
-main = "src.main:main"
-numpy-test = "src.main:main"
+tracking-demo = "tracking_demo.main:main"
 
 [build-system]
 requires = ["uv_build>=0.12.17,<0.13.0"]
 build-backend = "uv_build"
 
-[tool.uv.build-backend]
-module-name = "src"
-module-root = ""
-namespace = true
-
 [tool.uv.sources]
-tracker-cpp = { path = "../../" }
+tracker-cpp = { workspace = true }

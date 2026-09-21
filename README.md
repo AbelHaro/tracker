@@ -40,25 +40,38 @@ with:
 uv build
 ```
 
+## Examples workspace
+
+All projects under `examples/*` belong to the uv workspace and share the root
+`.venv` and `uv.lock`. Install all examples and run the NumPy plot with:
+
+```sh
+uv sync --all-packages
+uv run --all-packages tracking-demo
+```
+
+Select the root `.venv/bin/python` in your editor for Python and ty. Use
+`--all-packages` when running examples to keep all their dependencies installed.
+
 ## Run the YOLO example
 
 The example uses YOLO and OpenCV to detect objects in a video and pass them to
 the tracker. From the repository root:
 
 ```sh
-uv sync --package yolo
-uv run --package yolo main
+uv sync --all-packages
+uv run --all-packages traffic-tracker
 ```
 
 You can also run it from `examples/yolo`:
 
 ```sh
 cd examples/yolo
-uv sync
-uv run main
+uv sync --all-packages
+uv run --all-packages traffic-tracker
 ```
 
-The example uses `examples/yolo/src/traffic.mp4` and downloads the
+The example uses `examples/yolo/src/yolo/traffic.mp4` and downloads the
 `yolo26n.pt` weights on the first run. Press `Q` to close the window.
 
 The tracker output has the following format:
