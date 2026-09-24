@@ -12,6 +12,7 @@ add_library(tracker_core STATIC
     src/AssociationCost.cpp
     src/ByteTracker.cpp
     src/HungarianAlgorithm.cpp
+    src/KalmanFilter.cpp
     src/Track.cpp
 )
 target_compile_features(tracker_core PUBLIC cxx_std_23)
