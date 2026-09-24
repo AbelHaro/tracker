@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
+#include <omp.h>
 
 ByteTracker::ByteTracker(ByteTrackerConfig config) : _config(config)
 {
@@ -19,8 +20,12 @@ ByteTracker::ByteTracker(ByteTrackerConfig config) : _config(config)
         if (!std::isfinite(value) || value < 0 || value > 1)
             throw std::invalid_argument("ByteTracker thresholds must be in [0, 1]");
     if (config.lowConfidence >= config.highConfidence ||
-        config.newTrackConfidence < config.highConfidence || config.maxLostFrames < 0)
+        config.newTrackConfidence < config.highConfidence)
         throw std::invalid_argument("Invalid ByteTracker confidence ordering or lost buffer");
+    if (config.maxLostFrames < 0)
+        throw std::invalid_argument("maxLostFrames must be nonnegative");
+    if (config.threads < 0)
+        throw std::invalid_argument("threads must be nonnegative (0 means auto-detect)");
 }
 
 void ByteTracker::reset()
@@ -69,6 +74,11 @@ std::vector<Prediction> ByteTracker::update(const std::vector<Detection> &detect
             high.push_back(i);
         else if (detections[i].confidence() >= _config.lowConfidence)
             low.push_back(i);
+
+    const int threadLimit = _config.threads > 0 ? _config.threads : omp_get_max_threads();
+    const int threadCount = static_cast<int>(std::clamp<std::size_t>(_tracks.size(), 1, threadLimit));
+
+#pragma omp parallel for num_threads(threadCount) if (threadCount > 1)
     for (std::size_t i = 0; i < _tracks.size(); ++i)
     {
         auto &track = _tracks[i];
@@ -79,6 +89,13 @@ std::vector<Prediction> ByteTracker::update(const std::vector<Detection> &detect
             continue;
         }
         track.predict();
+    }
+    // Build association lists in order after all independent predictions finish.
+    for (std::size_t i = 0; i < _tracks.size(); ++i)
+    {
+        const auto &track = _tracks[i];
+        if (track.state() == TrackState::Removed)
+            continue;
         if (track.state() == TrackState::Tentative)
             tentative.push_back(i);
         else

@@ -37,7 +37,7 @@ PYBIND11_MODULE(tracker, m)
 
     const ByteTrackerConfig defaultConfig{};
     py::class_<ByteTrackerConfig>(m, "ByteTrackerConfig")
-        .def(py::init<double, double, double, double, double, double, int, BoxFormat>(),
+        .def(py::init<double, double, double, double, double, double, int, BoxFormat, int>(),
              py::arg("lowConfidence") = defaultConfig.lowConfidence,
              py::arg("highConfidence") = defaultConfig.highConfidence,
              py::arg("newTrackConfidence") = defaultConfig.newTrackConfidence,
@@ -45,7 +45,8 @@ PYBIND11_MODULE(tracker, m)
              py::arg("secondMatchCost") = defaultConfig.secondMatchCost,
              py::arg("tentativeMatchCost") = defaultConfig.tentativeMatchCost,
              py::arg("maxLostFrames") = defaultConfig.maxLostFrames,
-             py::arg_v("inputFormat", defaultConfig.inputFormat, "BoxFormat.TLWH"))
+             py::arg_v("inputFormat", defaultConfig.inputFormat, "BoxFormat.TLWH"),
+             py::arg("threads") = defaultConfig.threads)
         .def_readwrite("lowConfidence", &ByteTrackerConfig::lowConfidence)
         .def_readwrite("highConfidence", &ByteTrackerConfig::highConfidence)
         .def_readwrite("newTrackConfidence", &ByteTrackerConfig::newTrackConfidence)
@@ -53,7 +54,8 @@ PYBIND11_MODULE(tracker, m)
         .def_readwrite("secondMatchCost", &ByteTrackerConfig::secondMatchCost)
         .def_readwrite("tentativeMatchCost", &ByteTrackerConfig::tentativeMatchCost)
         .def_readwrite("maxLostFrames", &ByteTrackerConfig::maxLostFrames)
-        .def_readwrite("inputFormat", &ByteTrackerConfig::inputFormat);
+        .def_readwrite("inputFormat", &ByteTrackerConfig::inputFormat)
+        .def_readwrite("threads", &ByteTrackerConfig::threads);
 
     py::class_<Tracker>(m, "Tracker")
         .def_property_readonly("inputFormat", &Tracker::inputFormat)

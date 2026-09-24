@@ -20,10 +20,6 @@ class BoxFormat:
     TLWH: typing.ClassVar[BoxFormat]  # value = <BoxFormat.TLWH: 0>
     XYXY: typing.ClassVar[BoxFormat]  # value = <BoxFormat.XYXY: 2>
     __members__: typing.ClassVar[dict[str, BoxFormat]]  # value = {'TLWH': <BoxFormat.TLWH: 0>, 'CXCYWH': <BoxFormat.CXCYWH: 1>, 'XYXY': <BoxFormat.XYXY: 2>}
-    @typing.overload
-    def __eq__(self, other: BoxFormat) -> bool:
-        ...
-    @typing.overload
     def __eq__(self, other: typing.Any) -> bool:
         ...
     def __getstate__(self) -> int:
@@ -32,19 +28,15 @@ class BoxFormat:
         ...
     def __index__(self) -> int:
         ...
-    def __init__(self, value: typing.SupportsInt | typing.SupportsIndex) -> None:
+    def __init__(self, value: typing.SupportsInt) -> None:
         ...
     def __int__(self) -> int:
         ...
-    @typing.overload
-    def __ne__(self, other: BoxFormat) -> bool:
-        ...
-    @typing.overload
     def __ne__(self, other: typing.Any) -> bool:
         ...
     def __repr__(self) -> str:
         ...
-    def __setstate__(self, state: typing.SupportsInt | typing.SupportsIndex) -> None:
+    def __setstate__(self, state: typing.SupportsInt) -> None:
         ...
     def __str__(self) -> str:
         ...
@@ -59,52 +51,58 @@ class ByteTracker(Tracker):
         ...
 class ByteTrackerConfig:
     inputFormat: BoxFormat
-    def __init__(self, lowConfidence: typing.SupportsFloat | typing.SupportsIndex = 0.1, highConfidence: typing.SupportsFloat | typing.SupportsIndex = 0.6, newTrackConfidence: typing.SupportsFloat | typing.SupportsIndex = 0.7, firstMatchCost: typing.SupportsFloat | typing.SupportsIndex = 0.8, secondMatchCost: typing.SupportsFloat | typing.SupportsIndex = 0.5, tentativeMatchCost: typing.SupportsFloat | typing.SupportsIndex = 0.7, maxLostFrames: typing.SupportsInt | typing.SupportsIndex = 30, inputFormat: BoxFormat = ...) -> None:
+    def __init__(self, lowConfidence: typing.SupportsFloat = 0.1, highConfidence: typing.SupportsFloat = 0.6, newTrackConfidence: typing.SupportsFloat = 0.7, firstMatchCost: typing.SupportsFloat = 0.8, secondMatchCost: typing.SupportsFloat = 0.5, tentativeMatchCost: typing.SupportsFloat = 0.7, maxLostFrames: typing.SupportsInt = 30, inputFormat: BoxFormat = ..., threads: typing.SupportsInt = 0) -> None:
         ...
     @property
     def firstMatchCost(self) -> float:
         ...
     @firstMatchCost.setter
-    def firstMatchCost(self, arg0: typing.SupportsFloat | typing.SupportsIndex) -> None:
+    def firstMatchCost(self, arg0: typing.SupportsFloat) -> None:
         ...
     @property
     def highConfidence(self) -> float:
         ...
     @highConfidence.setter
-    def highConfidence(self, arg0: typing.SupportsFloat | typing.SupportsIndex) -> None:
+    def highConfidence(self, arg0: typing.SupportsFloat) -> None:
         ...
     @property
     def lowConfidence(self) -> float:
         ...
     @lowConfidence.setter
-    def lowConfidence(self, arg0: typing.SupportsFloat | typing.SupportsIndex) -> None:
+    def lowConfidence(self, arg0: typing.SupportsFloat) -> None:
         ...
     @property
     def maxLostFrames(self) -> int:
         ...
     @maxLostFrames.setter
-    def maxLostFrames(self, arg0: typing.SupportsInt | typing.SupportsIndex) -> None:
+    def maxLostFrames(self, arg0: typing.SupportsInt) -> None:
         ...
     @property
     def newTrackConfidence(self) -> float:
         ...
     @newTrackConfidence.setter
-    def newTrackConfidence(self, arg0: typing.SupportsFloat | typing.SupportsIndex) -> None:
+    def newTrackConfidence(self, arg0: typing.SupportsFloat) -> None:
         ...
     @property
     def secondMatchCost(self) -> float:
         ...
     @secondMatchCost.setter
-    def secondMatchCost(self, arg0: typing.SupportsFloat | typing.SupportsIndex) -> None:
+    def secondMatchCost(self, arg0: typing.SupportsFloat) -> None:
         ...
     @property
     def tentativeMatchCost(self) -> float:
         ...
     @tentativeMatchCost.setter
-    def tentativeMatchCost(self, arg0: typing.SupportsFloat | typing.SupportsIndex) -> None:
+    def tentativeMatchCost(self, arg0: typing.SupportsFloat) -> None:
+        ...
+    @property
+    def threads(self) -> int:
+        ...
+    @threads.setter
+    def threads(self, arg0: typing.SupportsInt) -> None:
         ...
 class Detection:
-    def __init__(self, x: typing.SupportsFloat | typing.SupportsIndex, y: typing.SupportsFloat | typing.SupportsIndex, width: typing.SupportsFloat | typing.SupportsIndex, height: typing.SupportsFloat | typing.SupportsIndex, condifence: typing.SupportsFloat | typing.SupportsIndex, class_id: typing.SupportsInt | typing.SupportsIndex) -> None:
+    def __init__(self, x: typing.SupportsFloat, y: typing.SupportsFloat, width: typing.SupportsFloat, height: typing.SupportsFloat, condifence: typing.SupportsFloat, class_id: typing.SupportsInt) -> None:
         ...
     @property
     def class_id(self) -> int:
@@ -141,7 +139,7 @@ class Tracker:
     @property
     def inputFormat(self) -> BoxFormat:
         ...
-def add(arg0: typing.SupportsInt | typing.SupportsIndex, arg1: typing.SupportsInt | typing.SupportsIndex) -> int:
+def add(arg0: typing.SupportsInt, arg1: typing.SupportsInt) -> int:
     """
     A function that adds two numbers
     """

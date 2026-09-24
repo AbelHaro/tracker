@@ -1,4 +1,5 @@
 #include "ByteTracker.hpp"
+#include <chrono>
 #include <functional>
 #include <iostream>
 #include <memory>
@@ -73,7 +74,8 @@ void testCosts()
     std::vector<Detection> tracks, detections;
     for (int i = 0; i < 37; ++i)
     {
-        auto makeBox = [&]() {
+        auto makeBox = [&]()
+        {
             const double x = static_cast<int>(random() % 100) - 50;
             const double y = static_cast<int>(random() % 100) - 50;
             const double w = 1 + random() % 60;
@@ -91,7 +93,7 @@ void testCosts()
             for (std::size_t j = 0; j < detections.size(); ++j)
             {
                 const double expected = 1 - tracks[i].iou(detections[j]) *
-                    (fuse ? detections[j].confidence() : 1.0);
+                                                (fuse ? detections[j].confidence() : 1.0);
                 require(std::abs(costs(i, j) - expected) < 1e-12,
                         "Eigen costs differ from scalar IoU reference");
             }
@@ -180,7 +182,7 @@ void testInputFormat()
         // Typed C++ detections are already canonical, regardless of the raw input format.
         const auto result = tracker->update({Detection(10, 20, 40, 60, 0.9)});
         require(result[0].box().x() == 10 && result[0].box().y() == 20 &&
-                result[0].box().width() == 40 && result[0].box().height() == 60,
+                    result[0].box().width() == 40 && result[0].box().height() == 60,
                 "Typed Detection must not be converted again");
     }
     ByteTrackerConfig config;
@@ -197,6 +199,38 @@ void testInputFormat()
     require(rejected, "Invalid box format must be rejected at construction");
 }
 
+void testThreadsPerformance()
+{
+    constexpr int threadCounts[] = {0, 1, 2, 4, 8};
+    constexpr int nDetections = 1000;
+    constexpr int nFrames = 100;
+    std::vector<Detection> detections;
+    detections.reserve(nDetections);
+    for (int i = 0; i < nDetections; ++i)
+        detections.emplace_back(i * 10, i * 10, 20, 20, 0.9);
+
+    for (int threads : threadCounts)
+    {
+        ByteTrackerConfig config;
+        config.threads = threads; // 0 means auto-detect.
+        ByteTracker tracker(config);
+        tracker.update(detections); // Create tracks before timing prediction and matching.
+        tracker.update(detections); // Warm up the worker threads and association path.
+
+        std::size_t totalTracks = 0;
+        const auto start = std::chrono::steady_clock::now();
+        for (int frame = 0; frame < nFrames; ++frame)
+            totalTracks += tracker.update(detections).size();
+        const double elapsedMs = std::chrono::duration<double, std::milli>(
+                                     std::chrono::steady_clock::now() - start)
+                                     .count();
+        require(totalTracks == nFrames * nDetections, "Thread count changed tracking results");
+        std::cout << "threads=" << threads << (threads == 0 ? " (auto)" : "")
+                  << " total_ms=" << elapsedMs
+                  << " ms/frame=" << elapsedMs / nFrames << '\n';
+    }
+}
+
 int main()
 {
     try
@@ -205,6 +239,7 @@ int main()
         testAssignment();
         testTracking();
         testInputFormat();
+        testThreadsPerformance();
         std::cout << "All tracker and Hungarian tests passed\n";
     }
     catch (const std::exception &error)

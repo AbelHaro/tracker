@@ -64,7 +64,7 @@ def collect_detections(
             results = model.predict(
                 frame, conf=DETECTION_CONFIDENCE, verbose=False, show=False
             )
-            boxes = results[0].boxes.cpu()
+            boxes = results[0].boxes.cpu()  # ty: ignore[not-subscriptable, unresolved-attribute]
             xywh = boxes.xywh.numpy()
             confidence = boxes.conf.numpy()
             class_id = boxes.cls.numpy()
@@ -90,8 +90,7 @@ def collect_detections(
 
 
 def make_native_tracker() -> ByteTracker:
-    config = ByteTrackerConfig()
-    config.inputFormat = BoxFormat.CXCYWH
+    config = ByteTrackerConfig(threads=0, inputFormat=BoxFormat.CXCYWH)
     return ByteTracker(config)
 
 

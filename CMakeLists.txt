@@ -6,6 +6,7 @@ include(CTest)
 find_package(Python REQUIRED COMPONENTS Interpreter Development.Module)
 find_package(pybind11 CONFIG REQUIRED)
 find_package(Eigen3 3.3 CONFIG REQUIRED)
+find_package(OpenMP REQUIRED COMPONENTS CXX)
 
 add_library(tracker_core STATIC
     src/AssociationCost.cpp
@@ -16,7 +17,7 @@ add_library(tracker_core STATIC
 target_compile_features(tracker_core PUBLIC cxx_std_23)
 set_target_properties(tracker_core PROPERTIES CXX_EXTENSIONS OFF POSITION_INDEPENDENT_CODE ON)
 target_include_directories(tracker_core PUBLIC include)
-target_link_libraries(tracker_core PUBLIC Eigen3::Eigen)
+target_link_libraries(tracker_core PUBLIC Eigen3::Eigen OpenMP::OpenMP_CXX)
 
 pybind11_add_module(tracker bindings/tracker.cpp)
 target_link_libraries(tracker PRIVATE tracker_core)
@@ -66,7 +67,7 @@ if(UV_EXECUTABLE)
         COMMAND ${CMAKE_COMMAND} -E env "PYTHONPATH=$<TARGET_FILE_DIR:tracker>"
             ${UV_EXECUTABLE} run --no-editable pybind11-stubgen --exit-code
             -o ${CMAKE_CURRENT_SOURCE_DIR}/bindings tracker
-        COMMAND ${Python_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/bindings/annotate_stub.py
+        # COMMAND ${Python_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/bindings/annotate_stub.py
         DEPENDS tracker
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         USES_TERMINAL
