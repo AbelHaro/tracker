@@ -74,7 +74,9 @@ uv run --all-packages traffic-tracker
 The example uses `examples/yolo/src/yolo/traffic.mp4` and downloads the
 `yolo26n.pt` weights on the first run. Press `Q` to close the window.
 
-The tracker output has the following format:
+`ByteTracker.update` takes a float32 NumPy array with shape `(N, 6)` and
+returns a float32 NumPy array with shape `(M, 7)`, where `M` is the number of
+tracks returned. The output columns are:
 
 ```text
 [x, y, width, height, id, confidence, class]
@@ -85,10 +87,21 @@ which is compatible with Ultralytics `boxes.xywh`.
 
 ## C++ executable and tests
 
-To build the example executable and run the native tests:
+To build the example executable, run it, and run the native tests:
 
 ```sh
-make
-make run
-make test
+cmake -S . -B build
+cmake --build build
+cmake --build build --target run
+ctest --test-dir build --output-on-failure
 ```
+
+Run the association benchmark or regenerate Python stubs with:
+
+```sh
+cmake --build build --target benchmark
+cmake --build build --target stubs
+```
+
+The `stubs` target requires `uv`. Use `cmake --build build --target clean`
+to remove CMake build outputs.

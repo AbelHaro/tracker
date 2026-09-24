@@ -49,7 +49,9 @@ def main() -> None:
             track_id = track[4]
             confidence = track[5]
             class_id = track[6]
-            cv2.rectangle(frame, (int(x), int(y)), (int(x + w), int(y + h)), (0, 255, 0), 2)
+            cv2.rectangle(
+                frame, (int(x), int(y)), (int(x + w), int(y + h)), (0, 255, 0), 2
+            )
             cv2.putText(
                 frame,
                 f"ID: {track_id}",

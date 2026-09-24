@@ -1,0 +1,25 @@
+[project]
+name = "benchmark"
+version = "0.1.0"
+description = "Benchmark of the tracker implementation"
+readme = "README.md"
+authors = [
+    { name = "AbelHaro", email = "abelh2003@gmail.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "ultralytics>=8.4.157",
+    "lap>=0.5.12",
+    "tracker-cpp",
+    "numpy>=2.5.3",
+]
+
+[project.scripts]
+benchmark = "benchmark.main:main"
+
+[build-system]
+requires = ["uv_build>=0.12.17,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.uv.sources]
+tracker-cpp = { workspace = true }
