@@ -14,6 +14,7 @@ add_library(tracker_core STATIC
     src/HungarianAlgorithm.cpp
     src/KalmanFilter.cpp
     src/Track.cpp
+    src/Sort.cpp
 )
 target_compile_features(tracker_core PUBLIC cxx_std_23)
 set_target_properties(tracker_core PROPERTIES CXX_EXTENSIONS OFF POSITION_INDEPENDENT_CODE ON)
@@ -41,7 +42,7 @@ add_custom_target(run
 )
 
 if(BUILD_TESTING)
-    foreach(test_name IN ITEMS kalman_filter_test tracker_test)
+    foreach(test_name IN ITEMS kalman_filter_test tracker_test sort_test)
         add_executable(${test_name} tests/${test_name}.cpp)
         target_link_libraries(${test_name} PRIVATE tracker_core)
         set_target_properties(${test_name} PROPERTIES

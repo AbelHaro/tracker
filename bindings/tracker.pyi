@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy
 import numpy.typing
 import typing
-__all__: list[str] = ['BoxFormat', 'ByteTracker', 'ByteTrackerConfig', 'Detection', 'Prediction', 'Tracker', 'add']
+__all__: list[str] = ['BoxFormat', 'ByteTracker', 'ByteTrackerConfig', 'Detection', 'Prediction', 'Sort', 'SortConfig', 'Tracker', 'add']
 class BoxFormat:
     """
     Members:
@@ -128,6 +128,27 @@ class Prediction:
         ...
     @property
     def id(self) -> int:
+        ...
+class Sort(Tracker):
+    def __init__(self, config: SortConfig = ...) -> None:
+        ...
+class SortConfig:
+    inputFormat: BoxFormat
+    def __init__(self, maxIoU: typing.SupportsFloat = 0.7, maxLostFrames: typing.SupportsInt = 30, inputFormat: BoxFormat = ...) -> None:
+        ...
+    @property
+    def maxIoU(self) -> float:
+        """
+        Maximum matching cost: 1 - IoU.
+        """
+    @maxIoU.setter
+    def maxIoU(self, arg0: typing.SupportsFloat) -> None:
+        ...
+    @property
+    def maxLostFrames(self) -> int:
+        ...
+    @maxLostFrames.setter
+    def maxLostFrames(self, arg0: typing.SupportsInt) -> None:
         ...
 class Tracker:
     def reset(self) -> None:

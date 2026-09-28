@@ -30,7 +30,6 @@ class ByteTracker final : public Tracker
 {
 public:
     explicit ByteTracker(ByteTrackerConfig config = {});
-    BoxFormat inputFormat() const override { return _config.inputFormat; }
     std::vector<Prediction> update(const std::vector<Detection> &detections) override;
     void reset() override;
 

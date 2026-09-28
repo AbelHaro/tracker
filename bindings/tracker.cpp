@@ -4,6 +4,7 @@
 #include <limits>
 #include "Tracker.hpp"
 #include "ByteTracker.hpp"
+#include "Sort.hpp"
 #include "Detection.hpp"
 #include "Prediction.hpp"
 
@@ -56,6 +57,16 @@ PYBIND11_MODULE(tracker, m)
         .def_readwrite("maxLostFrames", &ByteTrackerConfig::maxLostFrames)
         .def_readwrite("inputFormat", &ByteTrackerConfig::inputFormat)
         .def_readwrite("threads", &ByteTrackerConfig::threads);
+
+    const SortConfig defaultSortConfig{};
+    py::class_<SortConfig>(m, "SortConfig")
+        .def(py::init<double, int, BoxFormat>(),
+             py::arg("maxIoU") = defaultSortConfig.maxIoU,
+             py::arg("maxLostFrames") = defaultSortConfig.maxLostFrames,
+             py::arg_v("inputFormat", defaultSortConfig.inputFormat, "BoxFormat.TLWH"))
+        .def_readwrite("maxIoU", &SortConfig::maxIoU, "Maximum matching cost: 1 - IoU.")
+        .def_readwrite("maxLostFrames", &SortConfig::maxLostFrames)
+        .def_readwrite("inputFormat", &SortConfig::inputFormat);
 
     py::class_<Tracker>(m, "Tracker")
         .def_property_readonly("inputFormat", &Tracker::inputFormat)
@@ -118,6 +129,10 @@ PYBIND11_MODULE(tracker, m)
                                          "Returns float32 (M, 7) [x, y, width, height, track_id, confidence, class_id] "
                                          "with top-left x, y (TLWH), regardless of inputFormat. Empty frames use shape (0, 6).")
         .def("reset", &Tracker::reset);
+
+    py::class_<Sort, Tracker>(m, "Sort")
+        .def(py::init<SortConfig>(),
+             py::arg_v("config", defaultSortConfig, "SortConfig()"));
 
     py::class_<ByteTracker, Tracker>(m, "ByteTracker")
         .def(py::init<ByteTrackerConfig>(),

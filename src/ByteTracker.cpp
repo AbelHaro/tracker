@@ -4,7 +4,7 @@
 #include <stdexcept>
 #include <omp.h>
 
-ByteTracker::ByteTracker(ByteTrackerConfig config) : _config(config)
+ByteTracker::ByteTracker(ByteTrackerConfig config) : Tracker(config.inputFormat), _config(config)
 {
     switch (config.inputFormat)
     {

@@ -1,7 +1,7 @@
 # Tracker C++
 
 Object tracking library under development. It receives detections from each
-frame and maintains an ID for each object through a C++ ByteTrack implementation
+frame and maintains an ID for each object through C++ ByteTrack and SORT implementations
 with Python bindings.
 
 ## Requirements
