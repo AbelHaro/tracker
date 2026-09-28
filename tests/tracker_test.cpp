@@ -117,9 +117,7 @@ void testTracking()
     classified.update(Detection(1, 0, 20, 20, 0.8, 3));
     require(classified.box().classId() == 3, "Prediction must use latest detection class ID");
 
-    ByteTrackerConfig config;
-    config.maxLostFrames = 2;
-    std::unique_ptr<Tracker> tracker = std::make_unique<ByteTracker>(config);
+    std::unique_ptr<Tracker> tracker = std::make_unique<ByteTracker>(0.1, 0.6, 0.7, 0.8, 0.5, 0.7, 2);
     auto result = tracker->update({detection(0), detection(100)});
     require(result.size() == 2 && result[0].id() != result[1].id(), "Distinct track IDs");
     const auto first = result[0].id(), second = result[1].id();
@@ -159,10 +157,9 @@ void testTracking()
     }
     require(rejected, "Invalid detection must be rejected");
     rejected = false;
-    config.lowConfidence = config.highConfidence;
     try
     {
-        ByteTracker invalid(config);
+        ByteTracker invalid(0.6, 0.6);
     }
     catch (const std::invalid_argument &)
     {
@@ -175,9 +172,8 @@ void testInputFormat()
 {
     for (auto format : {BoxFormat::TLWH, BoxFormat::CXCYWH, BoxFormat::XYXY})
     {
-        ByteTrackerConfig config;
-        config.inputFormat = format;
-        std::unique_ptr<Tracker> tracker = std::make_unique<ByteTracker>(config);
+        std::unique_ptr<Tracker> tracker = std::make_unique<ByteTracker>(
+            0.1, 0.6, 0.7, 0.8, 0.5, 0.7, 30, format);
         require(tracker->inputFormat() == format, "Input format must be available through Tracker");
         // Typed C++ detections are already canonical, regardless of the raw input format.
         const auto result = tracker->update({Detection(10, 20, 40, 60, 0.9)});
@@ -185,12 +181,10 @@ void testInputFormat()
                     result[0].box().width() == 40 && result[0].box().height() == 60,
                 "Typed Detection must not be converted again");
     }
-    ByteTrackerConfig config;
-    config.inputFormat = static_cast<BoxFormat>(-1);
     bool rejected = false;
     try
     {
-        ByteTracker invalid(config);
+        ByteTracker invalid(0.1, 0.6, 0.7, 0.8, 0.5, 0.7, 30, static_cast<BoxFormat>(-1));
     }
     catch (const std::invalid_argument &)
     {
@@ -211,9 +205,7 @@ void testThreadsPerformance()
 
     for (int threads : threadCounts)
     {
-        ByteTrackerConfig config;
-        config.threads = threads; // 0 means auto-detect.
-        ByteTracker tracker(config);
+        ByteTracker tracker(0.1, 0.6, 0.7, 0.8, 0.5, 0.7, 30, BoxFormat::TLWH, threads);
         tracker.update(detections); // Create tracks before timing prediction and matching.
         tracker.update(detections); // Warm up the worker threads and association path.
 

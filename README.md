@@ -40,6 +40,45 @@ with:
 uv build
 ```
 
+## Python interface
+
+Create either implementation with keyword-only arguments; configuration classes
+have been removed:
+
+```python
+from tracker import BoxFormat, ByteTracker, Sort, Tracker
+
+sort = Sort(max_match_cost=0.7, max_lost_frames=30, input_format=BoxFormat.XYXY)
+byte = ByteTracker(high_confidence=0.6, input_format=BoxFormat.XYXY, threads=0)
+
+# Both implement Tracker.update(), reset(), and the read-only input_format property.
+model: Tracker = sort
+tracks = model.update(detections)
+model.reset()
+```
+
+`update` accepts `(N, 6)` arrays with box coordinates, confidence, and class ID.
+It returns float32 `(M, 7)` arrays containing
+`[x, y, width, height, track_id, confidence, class_id]`, always in TLWH format.
+Use `(0, 6)` arrays for empty frames. Python names use snake_case;
+`Detection` exposes `confidence`.
+
+SORT uses one Hungarian association pass without confidence filtering or fusion.
+`max_match_cost` limits **1 - IoU**: 0.7 requires IoU of at least 0.3.
+First-frame births are returned immediately; later births need a match in the
+next frame. Lost tracks retain their IDs for up to `max_lost_frames` missing
+frames and are returned only when matched.
+
+ByteTracker additionally accepts `low_confidence`, `high_confidence`,
+`new_track_confidence`, `first_match_cost`, `second_match_cost`,
+`tentative_match_cost`, and `threads` (0 selects automatically).
+C++ implementations also take constructor arguments directly, with defaults.
+
+Bindings are organized into shared types (`common.cpp`), NumPy conversion
+(`arrays.cpp`), and one registration file per implementation. To expose another
+tracker, register its constructor as a subclass of `Tracker`, call its binding
+function from `bindings/tracker.cpp`, and add its source to CMake.
+
 ## Examples workspace
 
 All projects under `examples/*` belong to the uv workspace and share the root

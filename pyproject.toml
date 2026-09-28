@@ -20,6 +20,7 @@ cache-keys = [
     { file = "pyproject.toml" },
     { file = "CMakeLists.txt" },
     { file = "bindings/**/*.cpp" },
+    { file = "bindings/**/*.hpp" },
     { file = "bindings/**/*.pyi" },
     { file = "src/**/*.cpp" },
     { file = "include/**/*.hpp" },

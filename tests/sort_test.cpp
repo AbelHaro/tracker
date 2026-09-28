@@ -2,6 +2,7 @@
 #include <iostream>
 #include <limits>
 #include <stdexcept>
+#include <tuple>
 
 void require(bool condition, const char *message)
 {
@@ -18,7 +19,7 @@ int main()
 {
     try
     {
-        Sort tracker(SortConfig(0.7, 2));
+        Sort tracker(0.7, 2);
         auto result = tracker.update({box(0), box(100)});
         require(result.size() == 2, "SORT must accept low confidence births");
         const auto first = result[0].id(), second = result[1].id();
@@ -46,7 +47,7 @@ int main()
         require(tracker.update({box(0)}).empty(), "Missed tentative must be removed");
         require(tracker.update({box(0)}).size() == 1, "Repeated detection confirms birth");
 
-        Sort strict(SortConfig(0, 0));
+        Sort strict(0, 0);
         strict.update({box(0)});
         result = strict.update({box(0, 0)});
         require(result.size() == 1 && result[0].id() == 1, "Exact match ignores confidence");
@@ -58,20 +59,23 @@ int main()
 
         for (auto format : {BoxFormat::TLWH, BoxFormat::CXCYWH, BoxFormat::XYXY})
         {
-            Sort formatted(SortConfig(0.7, 30, format));
+            Sort formatted(0.7, 30, format);
             Tracker &base = formatted;
             require(base.inputFormat() == format, "Polymorphic input format");
             require(base.update({box(10)})[0].box().x() == 10, "C++ boxes stay TLWH");
         }
-        for (auto config : {SortConfig(-0.1), SortConfig(1.1),
-                            SortConfig(std::numeric_limits<double>::quiet_NaN()),
-                            SortConfig(std::numeric_limits<double>::infinity()),
-                            SortConfig(0.7, -1), SortConfig(0.7, 1, static_cast<BoxFormat>(-1))})
+        for (auto [cost, lost, format] : {
+                 std::tuple{-0.1, 30, BoxFormat::TLWH},
+                 std::tuple{1.1, 30, BoxFormat::TLWH},
+                 std::tuple{std::numeric_limits<double>::quiet_NaN(), 30, BoxFormat::TLWH},
+                 std::tuple{std::numeric_limits<double>::infinity(), 30, BoxFormat::TLWH},
+                 std::tuple{0.7, -1, BoxFormat::TLWH},
+                 std::tuple{0.7, 1, static_cast<BoxFormat>(-1)}})
         {
             bool rejected = false;
-            try { Sort invalid(config); }
+            try { Sort invalid(cost, lost, format); }
             catch (const std::invalid_argument &) { rejected = true; }
-            require(rejected, "Invalid configuration must be rejected");
+            require(rejected, "Invalid constructor arguments must be rejected");
         }
         std::cout << "All SORT tests passed\n";
     }

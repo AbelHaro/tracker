@@ -10,7 +10,7 @@ from time import perf_counter
 
 import cv2
 import numpy as np
-from tracker import BoxFormat, ByteTracker, ByteTrackerConfig
+from tracker import BoxFormat, ByteTracker
 from ultralytics import YOLO
 from ultralytics.engine.results import Boxes
 from ultralytics.trackers.byte_tracker import BYTETracker
@@ -90,8 +90,7 @@ def collect_detections(
 
 
 def make_native_tracker() -> ByteTracker:
-    config = ByteTrackerConfig(threads=0, inputFormat=BoxFormat.CXCYWH)
-    return ByteTracker(config)
+    return ByteTracker(threads=0, input_format=BoxFormat.CXCYWH)
 
 
 def make_ultralytics_tracker() -> BYTETracker:

@@ -21,7 +21,13 @@ set_target_properties(tracker_core PROPERTIES CXX_EXTENSIONS OFF POSITION_INDEPE
 target_include_directories(tracker_core PUBLIC include)
 target_link_libraries(tracker_core PUBLIC Eigen3::Eigen OpenMP::OpenMP_CXX)
 
-pybind11_add_module(tracker bindings/tracker.cpp)
+pybind11_add_module(tracker
+    bindings/tracker.cpp
+    bindings/common.cpp
+    bindings/arrays.cpp
+    bindings/sort.cpp
+    bindings/byte_tracker.cpp
+)
 target_link_libraries(tracker PRIVATE tracker_core)
 set_target_properties(tracker PROPERTIES
     CXX_EXTENSIONS OFF

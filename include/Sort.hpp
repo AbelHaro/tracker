@@ -5,31 +5,21 @@
 #include "Tracker.hpp"
 #include "HungarianAlgorithm.hpp"
 
-class SortConfig
-{
-public:
-    SortConfig(double maxIoU = 0.7, int maxLostFrames = 30, BoxFormat inputFormat = BoxFormat::TLWH)
-        : maxIoU(maxIoU), maxLostFrames(maxLostFrames), inputFormat(inputFormat) {};
-
-    // Maximum association cost (1 - IoU), without confidence fusion.
-    double maxIoU;
-    int maxLostFrames;
-    BoxFormat inputFormat;
-};
-
 class Sort final : public Tracker
 {
 public:
-    explicit Sort(SortConfig config = {});
+    // maxMatchCost limits 1 - IoU; 0.7 requires IoU >= 0.3.
+    explicit Sort(double maxMatchCost = 0.7, int maxLostFrames = 30, BoxFormat inputFormat = BoxFormat::TLWH);
     std::vector<Prediction> update(const std::vector<Detection> &detections) override;
     void reset() override;
 
 private:
     std::vector<std::size_t> associate(const std::vector<std::size_t> &tracks,
                                        const std::vector<std::size_t> &indices, const std::vector<Detection> &detections,
-                                       double maxIoU);
+                                       double maxCost);
 
-    SortConfig _config;
+    double _maxMatchCost;
+    int _maxLostFrames;
     HungarianAlgorithm _association;
     std::uint64_t _nextId = 1;
     std::uint64_t _frame = 0;

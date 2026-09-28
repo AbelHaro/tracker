@@ -6,20 +6,12 @@
 #include <cmath>
 #include <stdexcept>
 
-Sort::Sort(SortConfig config) : Tracker(config.inputFormat), _config(config)
+Sort::Sort(double maxMatchCost, int maxLostFrames, BoxFormat inputFormat)
+    : Tracker(inputFormat), _maxMatchCost(maxMatchCost), _maxLostFrames(maxLostFrames)
 {
-    switch (config.inputFormat)
-    {
-    case BoxFormat::TLWH:
-    case BoxFormat::CXCYWH:
-    case BoxFormat::XYXY:
-        break;
-    default:
-        throw std::invalid_argument("Invalid input box format");
-    }
-    if (!std::isfinite(config.maxIoU) || config.maxIoU < 0 || config.maxIoU > 1)
-        throw std::invalid_argument("maxIoU must be in [0, 1]");
-    if (config.maxLostFrames < 0)
+    if (!std::isfinite(maxMatchCost) || maxMatchCost < 0 || maxMatchCost > 1)
+        throw std::invalid_argument("maxMatchCost must be in [0, 1]");
+    if (maxLostFrames < 0)
         throw std::invalid_argument("maxLostFrames must be nonnegative");
 }
 
@@ -68,7 +60,7 @@ std::vector<Prediction> Sort::update(const std::vector<Detection> &detections)
     {
         auto &track = _tracks[i];
         // Expire before association so an old ID cannot be resurrected.
-        if (track.state() == TrackState::Lost && track.missedFrames() > _config.maxLostFrames)
+        if (track.state() == TrackState::Lost && track.missedFrames() > _maxLostFrames)
         {
             track.markRemoved();
             continue;
@@ -78,7 +70,7 @@ std::vector<Prediction> Sort::update(const std::vector<Detection> &detections)
     }
     std::vector<std::size_t> indices(detections.size());
     std::iota(indices.begin(), indices.end(), std::size_t{0});
-    const auto remaining = associate(pool, indices, detections, _config.maxIoU);
+    const auto remaining = associate(pool, indices, detections, _maxMatchCost);
     for (auto i : pool)
         if (_tracks[i].missedFrames() > 0)
         {
@@ -91,7 +83,7 @@ std::vector<Prediction> Sort::update(const std::vector<Detection> &detections)
         _tracks.emplace_back(_nextId++, detections[i], _frame == 1);
     std::erase_if(_tracks, [this](const Track &track)
                   { return track.state() == TrackState::Removed ||
-                           (track.state() == TrackState::Lost && track.missedFrames() > _config.maxLostFrames); });
+                           (track.state() == TrackState::Lost && track.missedFrames() > _maxLostFrames); });
     std::vector<Prediction> predictions;
     for (const auto &track : _tracks)
         if (track.state() == TrackState::Tracked)

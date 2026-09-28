@@ -28,8 +28,7 @@ def main() -> None:
     plt.switch_backend("QtAgg")
     plt.ion()
 
-    tracker_config = tracker.ByteTrackerConfig()
-    object_tracker = tracker.ByteTracker(tracker_config)
+    object_tracker = tracker.ByteTracker()
 
     observations: np.ndarray = np.array(
         [

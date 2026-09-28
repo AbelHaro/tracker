@@ -1,11 +1,11 @@
 """
-Tracker library
+Object tracking with a shared NumPy interface.
 """
 from __future__ import annotations
 import numpy
 import numpy.typing
 import typing
-__all__: list[str] = ['BoxFormat', 'ByteTracker', 'ByteTrackerConfig', 'Detection', 'Prediction', 'Sort', 'SortConfig', 'Tracker', 'add']
+__all__: list[str] = ['BoxFormat', 'ByteTracker', 'Detection', 'Prediction', 'Sort', 'Tracker', 'add']
 class BoxFormat:
     """
     Members:
@@ -47,68 +47,16 @@ class BoxFormat:
     def value(self) -> int:
         ...
 class ByteTracker(Tracker):
-    def __init__(self, config: ByteTrackerConfig = ...) -> None:
-        ...
-class ByteTrackerConfig:
-    inputFormat: BoxFormat
-    def __init__(self, lowConfidence: typing.SupportsFloat = 0.1, highConfidence: typing.SupportsFloat = 0.6, newTrackConfidence: typing.SupportsFloat = 0.7, firstMatchCost: typing.SupportsFloat = 0.8, secondMatchCost: typing.SupportsFloat = 0.5, tentativeMatchCost: typing.SupportsFloat = 0.7, maxLostFrames: typing.SupportsInt = 30, inputFormat: BoxFormat = ..., threads: typing.SupportsInt = 0) -> None:
-        ...
-    @property
-    def firstMatchCost(self) -> float:
-        ...
-    @firstMatchCost.setter
-    def firstMatchCost(self, arg0: typing.SupportsFloat) -> None:
-        ...
-    @property
-    def highConfidence(self) -> float:
-        ...
-    @highConfidence.setter
-    def highConfidence(self, arg0: typing.SupportsFloat) -> None:
-        ...
-    @property
-    def lowConfidence(self) -> float:
-        ...
-    @lowConfidence.setter
-    def lowConfidence(self, arg0: typing.SupportsFloat) -> None:
-        ...
-    @property
-    def maxLostFrames(self) -> int:
-        ...
-    @maxLostFrames.setter
-    def maxLostFrames(self, arg0: typing.SupportsInt) -> None:
-        ...
-    @property
-    def newTrackConfidence(self) -> float:
-        ...
-    @newTrackConfidence.setter
-    def newTrackConfidence(self, arg0: typing.SupportsFloat) -> None:
-        ...
-    @property
-    def secondMatchCost(self) -> float:
-        ...
-    @secondMatchCost.setter
-    def secondMatchCost(self, arg0: typing.SupportsFloat) -> None:
-        ...
-    @property
-    def tentativeMatchCost(self) -> float:
-        ...
-    @tentativeMatchCost.setter
-    def tentativeMatchCost(self, arg0: typing.SupportsFloat) -> None:
-        ...
-    @property
-    def threads(self) -> int:
-        ...
-    @threads.setter
-    def threads(self, arg0: typing.SupportsInt) -> None:
+    def __init__(self, *, low_confidence: typing.SupportsFloat = 0.1, high_confidence: typing.SupportsFloat = 0.6, new_track_confidence: typing.SupportsFloat = 0.7, first_match_cost: typing.SupportsFloat = 0.8, second_match_cost: typing.SupportsFloat = 0.5, tentative_match_cost: typing.SupportsFloat = 0.7, max_lost_frames: typing.SupportsInt = 30, input_format: BoxFormat = ..., threads: typing.SupportsInt = 0) -> None:
         ...
 class Detection:
-    def __init__(self, x: typing.SupportsFloat, y: typing.SupportsFloat, width: typing.SupportsFloat, height: typing.SupportsFloat, condifence: typing.SupportsFloat, class_id: typing.SupportsInt) -> None:
+    def __init__(self, x: typing.SupportsFloat, y: typing.SupportsFloat, width: typing.SupportsFloat, height: typing.SupportsFloat, confidence: typing.SupportsFloat, class_id: typing.SupportsInt) -> None:
         ...
     @property
     def class_id(self) -> int:
         ...
     @property
-    def confince(self) -> float:
+    def confidence(self) -> float:
         ...
     @property
     def height(self) -> float:
@@ -130,35 +78,19 @@ class Prediction:
     def id(self) -> int:
         ...
 class Sort(Tracker):
-    def __init__(self, config: SortConfig = ...) -> None:
-        ...
-class SortConfig:
-    inputFormat: BoxFormat
-    def __init__(self, maxIoU: typing.SupportsFloat = 0.7, maxLostFrames: typing.SupportsInt = 30, inputFormat: BoxFormat = ...) -> None:
-        ...
-    @property
-    def maxIoU(self) -> float:
+    def __init__(self, *, max_match_cost: typing.SupportsFloat = 0.7, max_lost_frames: typing.SupportsInt = 30, input_format: BoxFormat = ...) -> None:
         """
-        Maximum matching cost: 1 - IoU.
+        Create SORT. max_match_cost limits 1 - IoU; 0.7 requires IoU >= 0.3.
         """
-    @maxIoU.setter
-    def maxIoU(self, arg0: typing.SupportsFloat) -> None:
-        ...
-    @property
-    def maxLostFrames(self) -> int:
-        ...
-    @maxLostFrames.setter
-    def maxLostFrames(self, arg0: typing.SupportsInt) -> None:
-        ...
 class Tracker:
     def reset(self) -> None:
         ...
     def update(self, detections: typing.Annotated[numpy.typing.ArrayLike, numpy.float32]) -> numpy.typing.NDArray[numpy.float32]:
         """
-        Update one frame: (N, 6) [a, b, c, d, confidence, class_id]. Pixel box coordinates follow inputFormat: TLWH (x, y, width, height), CXCYWH (center_x, center_y, width, height), or XYXY (x1, y1, x2, y2). Returns float32 (M, 7) [x, y, width, height, track_id, confidence, class_id] with top-left x, y (TLWH), regardless of inputFormat. Empty frames use shape (0, 6).
+        Update one frame: (N, 6) [a, b, c, d, confidence, class_id]. Pixel box coordinates follow input_format: TLWH (x, y, width, height), CXCYWH (center_x, center_y, width, height), or XYXY (x1, y1, x2, y2). Returns float32 (M, 7) [x, y, width, height, track_id, confidence, class_id] with top-left x, y (TLWH), regardless of input_format. Empty frames use shape (0, 6).
         """
     @property
-    def inputFormat(self) -> BoxFormat:
+    def input_format(self) -> BoxFormat:
         ...
 def add(arg0: typing.SupportsInt, arg1: typing.SupportsInt) -> int:
     """

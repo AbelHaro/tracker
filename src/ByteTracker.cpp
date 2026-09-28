@@ -4,27 +4,24 @@
 #include <stdexcept>
 #include <omp.h>
 
-ByteTracker::ByteTracker(ByteTrackerConfig config) : Tracker(config.inputFormat), _config(config)
+ByteTracker::ByteTracker(double lowConfidence, double highConfidence, double newTrackConfidence,
+                         double firstMatchCost, double secondMatchCost, double tentativeMatchCost,
+                         int maxLostFrames, BoxFormat inputFormat, int threads)
+    : Tracker(inputFormat), _lowConfidence(lowConfidence), _highConfidence(highConfidence),
+      _newTrackConfidence(newTrackConfidence), _firstMatchCost(firstMatchCost),
+      _secondMatchCost(secondMatchCost), _tentativeMatchCost(tentativeMatchCost),
+      _maxLostFrames(maxLostFrames), _threads(threads)
 {
-    switch (config.inputFormat)
-    {
-    case BoxFormat::TLWH:
-    case BoxFormat::CXCYWH:
-    case BoxFormat::XYXY:
-        break;
-    default:
-        throw std::invalid_argument("Invalid input box format");
-    }
-    for (double value : {config.lowConfidence, config.highConfidence, config.newTrackConfidence,
-                         config.firstMatchCost, config.secondMatchCost, config.tentativeMatchCost})
+    for (double value : {lowConfidence, highConfidence, newTrackConfidence,
+                         firstMatchCost, secondMatchCost, tentativeMatchCost})
         if (!std::isfinite(value) || value < 0 || value > 1)
             throw std::invalid_argument("ByteTracker thresholds must be in [0, 1]");
-    if (config.lowConfidence >= config.highConfidence ||
-        config.newTrackConfidence < config.highConfidence)
+    if (lowConfidence >= highConfidence ||
+        newTrackConfidence < highConfidence)
         throw std::invalid_argument("Invalid ByteTracker confidence ordering or lost buffer");
-    if (config.maxLostFrames < 0)
+    if (maxLostFrames < 0)
         throw std::invalid_argument("maxLostFrames must be nonnegative");
-    if (config.threads < 0)
+    if (threads < 0)
         throw std::invalid_argument("threads must be nonnegative (0 means auto-detect)");
 }
 
@@ -70,12 +67,12 @@ std::vector<Prediction> ByteTracker::update(const std::vector<Detection> &detect
     ++_frame;
     std::vector<std::size_t> high, low, pool, tentative;
     for (std::size_t i = 0; i < detections.size(); ++i)
-        if (detections[i].confidence() >= _config.highConfidence)
+        if (detections[i].confidence() >= _highConfidence)
             high.push_back(i);
-        else if (detections[i].confidence() >= _config.lowConfidence)
+        else if (detections[i].confidence() >= _lowConfidence)
             low.push_back(i);
 
-    const int threadLimit = _config.threads > 0 ? _config.threads : omp_get_max_threads();
+    const int threadLimit = _threads > 0 ? _threads : omp_get_max_threads();
     const int threadCount = static_cast<int>(std::clamp<std::size_t>(_tracks.size(), 1, threadLimit));
 
 #pragma omp parallel for num_threads(threadCount) if (threadCount > 1)
@@ -83,7 +80,7 @@ std::vector<Prediction> ByteTracker::update(const std::vector<Detection> &detect
     {
         auto &track = _tracks[i];
         // Expire before association so an old ID cannot be resurrected.
-        if (track.state() == TrackState::Lost && track.missedFrames() > _config.maxLostFrames)
+        if (track.state() == TrackState::Lost && track.missedFrames() > _maxLostFrames)
         {
             track.markRemoved();
             continue;
@@ -101,25 +98,25 @@ std::vector<Prediction> ByteTracker::update(const std::vector<Detection> &detect
         else
             pool.push_back(i);
     }
-    high = associate(pool, high, detections, _config.firstMatchCost, true);
+    high = associate(pool, high, detections, _firstMatchCost, true);
     std::vector<std::size_t> remainingActive;
     for (auto i : pool)
         if (_tracks[i].state() == TrackState::Tracked && _tracks[i].missedFrames() > 0)
             remainingActive.push_back(i);
-    associate(remainingActive, low, detections, _config.secondMatchCost, false);
+    associate(remainingActive, low, detections, _secondMatchCost, false);
     for (auto i : pool)
         if (_tracks[i].missedFrames() > 0)
             _tracks[i].markLost();
-    high = associate(tentative, high, detections, _config.tentativeMatchCost, true);
+    high = associate(tentative, high, detections, _tentativeMatchCost, true);
     for (auto i : tentative)
         if (_tracks[i].missedFrames() > 0)
             _tracks[i].markRemoved();
     for (auto i : high)
-        if (detections[i].confidence() >= _config.newTrackConfidence)
+        if (detections[i].confidence() >= _newTrackConfidence)
             _tracks.emplace_back(_nextId++, detections[i], _frame == 1);
     std::erase_if(_tracks, [this](const Track &track)
                   { return track.state() == TrackState::Removed ||
-                           (track.state() == TrackState::Lost && track.missedFrames() > _config.maxLostFrames); });
+                           (track.state() == TrackState::Lost && track.missedFrames() > _maxLostFrames); });
     std::vector<Prediction> predictions;
     for (const auto &track : _tracks)
         if (track.state() == TrackState::Tracked)

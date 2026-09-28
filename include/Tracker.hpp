@@ -4,6 +4,7 @@
 #include "Detection.hpp"
 #include "Prediction.hpp"
 #include <vector>
+#include <stdexcept>
 
 class Tracker
 {
@@ -16,7 +17,18 @@ public:
     virtual void reset() = 0;
 
 protected:
-    explicit Tracker(BoxFormat inputFormat = BoxFormat::TLWH) : _inputFormat(inputFormat) {}
+    explicit Tracker(BoxFormat inputFormat = BoxFormat::TLWH) : _inputFormat(inputFormat)
+    {
+        switch (inputFormat)
+        {
+        case BoxFormat::TLWH:
+        case BoxFormat::CXCYWH:
+        case BoxFormat::XYXY:
+            break;
+        default:
+            throw std::invalid_argument("Invalid input box format");
+        }
+    }
 
 private:
     BoxFormat _inputFormat;

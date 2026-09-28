@@ -11,10 +11,7 @@ VIDEO_URL = str(Path(__file__).with_name("traffic.mp4"))
 def main() -> None:
     model = YOLO("yolo26n.pt", task="detect")
 
-    tracker_config = tracker.ByteTrackerConfig()
-    tracker_config.inputFormat = tracker.BoxFormat.CXCYWH
-
-    byte_tracker = tracker.ByteTracker(tracker_config)
+    byte_tracker = tracker.ByteTracker(input_format=tracker.BoxFormat.CXCYWH)
 
     video = cv2.VideoCapture(VIDEO_URL)
 
