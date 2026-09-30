@@ -49,7 +49,7 @@ add_custom_target(run
 
 if(BUILD_TESTING)
     foreach(test_name IN ITEMS kalman_filter_test tracker_test sort_test)
-        add_executable(${test_name} tests/${test_name}.cpp)
+        add_executable(${test_name} tests/unit/${test_name}.cpp)
         target_link_libraries(${test_name} PRIVATE tracker_core)
         set_target_properties(${test_name} PROPERTIES
             RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
@@ -58,14 +58,17 @@ if(BUILD_TESTING)
     endforeach()
 endif()
 
-add_executable(association_benchmark EXCLUDE_FROM_ALL tests/association_benchmark.cpp)
-target_link_libraries(association_benchmark PRIVATE tracker_core)
-set_target_properties(association_benchmark PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
-)
+foreach(benchmark_name IN ITEMS association_benchmark thread_performance_benchmark)
+    add_executable(${benchmark_name} EXCLUDE_FROM_ALL tests/benchmarks/${benchmark_name}.cpp)
+    target_link_libraries(${benchmark_name} PRIVATE tracker_core)
+    set_target_properties(${benchmark_name} PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
+    )
+endforeach()
 add_custom_target(benchmark
     COMMAND $<TARGET_FILE:association_benchmark>
-    DEPENDS association_benchmark
+    COMMAND $<TARGET_FILE:thread_performance_benchmark>
+    DEPENDS association_benchmark thread_performance_benchmark
     USES_TERMINAL
 )
 
