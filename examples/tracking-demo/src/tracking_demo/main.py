@@ -67,8 +67,8 @@ def main() -> None:
             label="Detections" if i == 0 else None,
         )
         for tracking in trackings:
-            x, y = tracking[:2]
-            track_id = int(tracking[4])
+            x, y = tracking.box.x, tracking.box.y
+            track_id = tracking.id
             color = f"C{track_id % 10}"
             plt.scatter(
                 x,
@@ -95,7 +95,7 @@ def main() -> None:
         # There is one object per frame; missing estimates have no paired error.
         if len(trackings) == 1:
             observed_y.append(float(detections[0, 1]))
-            estimated_y.append(float(trackings[0, 1]))
+            estimated_y.append(float(trackings[0].box.y))
 
     if estimated_y:
         error = mse(np.array(observed_y), np.array(estimated_y))

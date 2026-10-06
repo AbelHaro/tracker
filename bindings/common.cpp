@@ -1,5 +1,6 @@
 #include "bindings.hpp"
 #include "arrays.hpp"
+#include <pybind11/stl.h>
 
 namespace tracker_bindings
 {
@@ -19,14 +20,16 @@ namespace tracker_bindings
             .def_property_readonly("confidence", &Detection::confidence)
             .def_property_readonly("class_id", &Detection::classId);
 
-        py::class_<Prediction>(m, "Prediction").def_property_readonly("id", &Prediction::id).def_property_readonly("box", &Prediction::box, py::return_value_policy::copy);
+        py::class_<Prediction>(m, "Prediction", "An output snapshot containing a track ID and its TLWH detection box.")
+            .def_property_readonly("id", &Prediction::id)
+            .def_property_readonly("box", &Prediction::box, py::return_value_policy::copy);
 
         py::class_<Tracker>(m, "Tracker")
             .def_property_readonly("input_format", &Tracker::inputFormat)
-            .def("update", &update, py::arg("detections"), "Update one frame: (N, 6) [a, b, c, d, confidence, class_id]. "
+            .def("update", &update, py::arg("detections").noconvert(), "Update one frame with a float32 NumPy array: (N, 6) [a, b, c, d, confidence, class_id]. "
                                                            "Pixel box coordinates follow input_format: TLWH (x, y, width, height), "
                                                            "CXCYWH (center_x, center_y, width, height), or XYXY (x1, y1, x2, y2). "
-                                                           "Returns float32 (M, 7) [x, y, width, height, track_id, confidence, class_id] "
+                                                           "Returns a list of Prediction snapshots with integer id and box properties "
                                                            "with top-left x, y (TLWH), regardless of input_format. Empty frames use shape (0, 6).")
             .def("reset", &Tracker::reset);
     }

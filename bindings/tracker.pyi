@@ -85,9 +85,11 @@ class Sort(Tracker):
 class Tracker:
     def reset(self) -> None:
         ...
-    def update(self, detections: typing.Annotated[numpy.typing.ArrayLike, numpy.float32]) -> numpy.typing.NDArray[numpy.float32]:
-        """
-        Update one frame: (N, 6) [a, b, c, d, confidence, class_id]. Pixel box coordinates follow input_format: TLWH (x, y, width, height), CXCYWH (center_x, center_y, width, height), or XYXY (x1, y1, x2, y2). Returns float32 (M, 7) [x, y, width, height, track_id, confidence, class_id] with top-left x, y (TLWH), regardless of input_format. Empty frames use shape (0, 6).
+    def update(self, detections: numpy.typing.NDArray[numpy.float32]) -> list[Prediction]:
+        """Update one frame from float32 (N, 6) detections; return Prediction snapshots.
+
+        Input coordinates follow input_format. Output boxes always use TLWH.
+        Empty frames use shape (0, 6).
         """
     @property
     def input_format(self) -> BoxFormat:

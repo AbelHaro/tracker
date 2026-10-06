@@ -57,11 +57,25 @@ tracks = model.update(detections)
 model.reset()
 ```
 
-`update` accepts `(N, 6)` arrays with box coordinates, confidence, and class ID.
-It returns float32 `(M, 7)` arrays containing
-`[x, y, width, height, track_id, confidence, class_id]`, always in TLWH format.
+`update` accepts NumPy `float32` arrays of shape `(N, 6)` with box coordinates,
+confidence, and class ID. Sliced and transposed arrays are supported. Convert
+other inputs with `np.asarray(detections, dtype=np.float32)` before calling.
+It returns a `list[Prediction]` with integer track IDs and detection boxes,
+always in TLWH format.
 Use `(0, 6)` arrays for empty frames. Python names use snake_case;
 `Detection` exposes `confidence`.
+
+Results are C++ output snapshots with named properties:
+
+```python
+for prediction in model.update(detections):
+    box = prediction.box
+    print(prediction.id, box.x, box.y, box.width, box.height,
+          box.confidence, box.class_id)
+```
+
+Call `update` once per frame to advance the tracker.
+Snapshots remain valid after subsequent updates or resets.
 
 SORT uses one Hungarian association pass without confidence filtering or fusion.
 `max_match_cost` limits **1 - IoU**: 0.7 requires IoU of at least 0.3.
@@ -113,13 +127,9 @@ uv run --all-packages traffic-tracker
 The example uses `examples/yolo/src/yolo/traffic.mp4` and downloads the
 `yolo26n.pt` weights on the first run. Press `Q` to close the window.
 
-`ByteTracker.update` takes a float32 NumPy array with shape `(N, 6)` and
-returns a float32 NumPy array with shape `(M, 7)`, where `M` is the number of
-tracks returned. The output columns are:
-
-```text
-[x, y, width, height, id, confidence, class]
-```
+The example calls `ByteTracker.update` with a float32 NumPy array of
+shape `(N, 6)` and receives `Prediction` objects. Each exposes `id` and `box`;
+the box exposes `x`, `y`, `width`, `height`, `confidence`, and `class_id`.
 
 Coordinates are given in pixels, and the example uses the `CXCYWH` format,
 which is compatible with Ultralytics `boxes.xywh`.

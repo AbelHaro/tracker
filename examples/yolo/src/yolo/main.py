@@ -1,9 +1,11 @@
 from pathlib import Path
+from typing import cast
 
 import cv2
 import numpy as np
 import tracker
 from ultralytics import YOLO
+from ultralytics.engine.results import Results
 
 VIDEO_URL = str(Path(__file__).with_name("traffic.mp4"))
 
@@ -24,14 +26,20 @@ def main() -> None:
         if not ret:
             break
 
-        results = model.predict(frame, conf=0.25, verbose=False)
+        # Non-streaming detection returns a list of Results.
+        results = cast(
+            list[Results], model.predict(frame, conf=0.25, verbose=False, stream=False)
+        )
 
         boxes = results[0].boxes
-        detections = np.empty((len(boxes), 6), dtype=np.float32)
-
-        detections[:, :4] = boxes.xywh.cpu().numpy()
-        detections[:, 4] = boxes.conf.cpu().numpy()
-        detections[:, 5] = boxes.cls.cpu().numpy()
+        if boxes is None:
+            detections = np.empty((0, 6), dtype=np.float32)
+        else:
+            boxes = boxes.cpu().numpy()
+            detections = np.empty((len(boxes), 6), dtype=np.float32)
+            detections[:, :4] = np.asarray(boxes.xywh)
+            detections[:, 4] = np.asarray(boxes.conf)
+            detections[:, 5] = np.asarray(boxes.cls)
 
         tracks = byte_tracker.update(detections)
 
@@ -39,20 +47,18 @@ def main() -> None:
         print(f"Tracks: {tracks}")
 
         for track in tracks:
-            x = track[0]
-            y = track[1]
-            w = track[2]
-            h = track[3]
-            track_id = track[4]
-            confidence = track[5]
-            class_id = track[6]
+            box = track.box
             cv2.rectangle(
-                frame, (int(x), int(y)), (int(x + w), int(y + h)), (0, 255, 0), 2
+                frame,
+                (int(box.x), int(box.y)),
+                (int(box.x + box.width), int(box.y + box.height)),
+                (0, 255, 0),
+                2,
             )
             cv2.putText(
                 frame,
-                f"ID: {track_id}",
-                (int(x), int(y) - 10),
+                f"ID: {track.id}",
+                (int(box.x), int(box.y) - 10),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.5,
                 (0, 255, 0),
